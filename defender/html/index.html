@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>Project Defender</title>
+
+  <link rel="stylesheet" href="vendor/bootstrap/3.3.7/bootstrap.min.css">
+  <link rel="stylesheet" href="vendor/bootstrap/3.3.7/bootstrap-theme.min.css">
+
+  <link rel="stylesheet" href="vendor/mdl/1.2.1/material.min.css">
+
+  <link rel="stylesheet" href="vendor/angular_material/1.1.0/angular-material.min.css">
+  <link rel="stylesheet" href="styles/roboto-fonts.css">
+  <link rel="stylesheet" href="styles/material-icons.css">
+
+  <link rel="stylesheet" href="styles/builder.css">
+
+  <!-- Angular Material requires Angular.js Libraries -->
+  <script src="vendor/angularjs/1.5.5/angular.min.js"></script>
+  <script src="vendor/angularjs/1.5.5/angular-animate.min.js"></script>
+  <script src="vendor/angularjs/1.5.5/angular-aria.min.js"></script>
+  <script src="vendor/angularjs/1.5.5/angular-messages.min.js"></script>
+  <script src="vendor/angularjs/1.5.5/angular-route.min.js"></script>
+  <script src="vendor/angularjs/1.5.5/angular-sanitize.min.js"></script>
+  <script src="vendor/angular_material/1.1.0/angular-material.min.js"></script>
+
+  <!-- 3rd Party Form Libraries -->
+  <script src="scripts/vendor/tv4.min.js"></script>
+  <script src="scripts/vendor/ObjectPath.js"></script>
+  <script src="scripts/vendor/schema-form.min.js"></script>
+
+  <!--<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>-->
+  <script src="vendor/bootstrap/3.3.7/bootstrap-decorator.min.js"></script>
+
+  <!-- Application libraries -->
+  <script src="scripts/vendor/sol-core.js"></script>
+  <script src="scripts/vendor/sol-file.js"></script>
+  <script src="scripts/vendor/sol-json.js"></script>
+  <script src="scripts/vendor/sol-ui.js"></script>
+  <script src="scripts/vendor/sol-decorator.js"></script>
+
+  <!-- Application -->
+  <script src="scripts/app.js"></script>
+  <script src="scripts/controllers/PdCtrl.js"></script>
+  <script src="scripts/controllers/PdSentryCtrl.js"></script>
+
+  <style>
+  .no-bg {
+      background: 0,0,0;
+  }
+  </style>
+</head>
+
+<script>
+</script>
+
+<body id="root" ng-app="pdManager">
+    <div id="toast-container" ng-controller="PdCtrl as pdCtrl" ng-cloak layout="column">
+        <!-- Main Appbar -->
+        <md-toolbar class="md-primary md-hue-2">
+            <div class="md-toolbar-tools">
+                <md-button class="md-icon-button" ng-click="pdCtrl.onToggleDrawer('left')">
+                    <md-icon class="material-icons step">menu</md-icon>
+                </md-button>
+                <h2><span>Defender Manager</span></h2>
+                <span flex></span>
+                <!--<md-menu md-position-mode="target-right target" >
+                    <md-button class="md-icon-button" ng-click="$mdOpenMenu($event)">
+                        <md-icon class="material-icons step">more_vert</md-icon>
+                    </md-button>
+                    <md-menu-content>
+                        <md-menu-item>
+                            <md-button ng-click="">Reset</md-button>
+                        </md-menu-item>
+                    </md-menu-content>
+                </md-menu>-->
+            </div>
+        </md-toolbar>
+
+        <!-- Main Left drawer -->
+        <md-sidenav class="md-sidenav-left md-whiteframe-4dp" md-component-id="left">
+            <div class="drawer-banner">
+                <img src="./images/art_combo.svg">
+                <div>
+                    <h1 class="md-headline">Project Defender</h1>
+                    <h6 class="md-subhead">Home Defense Manager</h6>
+                </div>
+            </div>
+            <md-list flex>
+                <md-list-item ng-repeat="page in pdCtrl.pages track by $index" ng-click="pdCtrl.onLoadPage($index)" style="position: relative"
+                md-colors="(pdCtrl.selections.page == $index ? {'background-color': 'default-primary-700-0.75', 'color': 'grey-A100'} : {})">
+                    <md-icon class="material-icons" md-colors="(pdCtrl.selections.page == $index ? {'color': 'grey-A100'} : {})">{{page.icon}}</md-icon>
+                    <div class="md-list-item-text" flex>
+                        <h3></h3>
+                        <p>{{page.title}}</p>
+                    </div>
+                </md-list-item>
+                <md-divider></md-divider>
+                <md-subheader class="md-no-sticky">Page Shortcuts</md-subheader>
+                <md-list-item ng-repeat="shortcut in activePageShortcuts track by $index" ng-click="onLoadPageShortcut($index)">
+                    <md-icon class="material-icons">home</md-icon>
+                    <div class="md-list-item-text" flex>
+                        <h3></h3>
+                    </div>
+                </md-list-item>
+                <md-divider></md-divider>
+            </md-list>
+            <!--<md-content layout-padding>
+                <a ng-click="tubCtrl.onToggleDrawer('left')" href="#images">Shortcut</a>
+            </md-content>-->
+        </md-sidenav>
+
+        <!-- Main content window-->
+        <md-tabs class="md-primary md-hue-2" md-selected="pdCtrl.selections.page" flex>
+            <md-tab label="Sentries">
+                <md-content class="root" ng-controller="PdSentryCtrl as pdSentryCtrl">
+                    <!-- Guest Configuration Details-->
+                    <a name="sentries"></a>
+                    <div class="whitespace"></div>
+                    <div>
+                        <md-toolbar class="card-wide md-primary md-hue-2">
+                            <div class="md-toolbar-tools">
+                                <h2><span>Sentries &nbsp;&nbsp;</span></h2>
+                                <md-switch class="md-primary" sol-slideable-toggle="card-sentries" ng-model="pdSentryCtrl.activeCards.cards" aria-label="Show Cards"></md-switch>
+                                <span flex></span>
+                                <md-button class="md-icon-button" ng-click="pdSentryCtrl.onGuestDelete()" ng-show="pdSentryCtrl.sentries.length">
+                                    <md-icon class="material-icons step">delete</md-icon>
+                                    <md-tooltip md-direction="below" md-delay="750">Delete Sentry</md-tooltip>
+                                </md-button>
+                                <md-menu md-position-mode="target-right target" >
+                                    <md-button class="md-icon-button" ng-click="$mdOpenMenu($event)">
+                                        <md-icon md-menu-origin class="material-icons step">more_vert</md-icon>
+                                    </md-button>
+                                    <md-menu-content>
+                                        <md-menu-item>
+                                            <md-button ng-click="pdSentryCtrl.onSentriesDisarm()">Disarm All Sentries</md-button>
+                                        </md-menu-item>
+                                    </md-menu-content>
+                                </md-menu>
+                            </div>
+                        </md-toolbar>
+                        <md-card id="card-sentries" class="card-wide sol-slideable" expanded="true">
+                            <div>
+                                <div layout="row" ng-show="pdSentryCtrl.sentries.length">
+                                    <div class="list-group tabs-left" flex>
+                                        <button class="list-group-item" ng-repeat="sentry in pdSentryCtrl.sentries track by $index" md-colors="(pdSentryCtrl.selection == $index ? {'background-color': 'default-primary-700', 'color': 'grey-A100'} : {})" ng-click="pdSentryCtrl.onSentrySelect($index)" ng-bind-html="pdSentryCtrl.getSentryName($index)"></button>
+                                    </div>
+
+                                    <div flex="80">
+                                        <md-tabs class="md-primary md-hue-2" md-selected="" flex>
+                                            <md-tab label="Overview">
+                                                <md-content class="no-bg">
+                                                    <div class="whitespace" ng-show="pdSentryCtrl.sentries.length"></div>
+                                                </md-content>
+                                            </md-tab>
+                                            <md-tab label="Status">
+                                                <md-content class="no-bg">
+                                                </md-content>
+                                            </md-tab>
+                                            <md-tab label="Hardware">
+                                                <md-content class="no-bg">
+                                                </md-content>
+                                            </md-tab>
+
+                                        </md-tabs>
+                                        <div class="overlay" flex="80" style="background-color: rgba(0, 0, 0, 0.5);margin-left: 20%" ng-hide="!pdSentryCtrl.loadingActivated">
+                                            <md-progress-circular class="md-primary md-hue-3" md-diameter="60" ng-hide="!pdSentryCtrl.loadingActivated" ng-disable="!pdSentryCtrl.loadingActivated"></md-progress-circular>
+                                        </div>
+                                        <div class="overlay" flex="80" style="background-color: rgba(0, 0, 0, 0.5);margin-left: 20%" ng-hide="!pdSentryCtrl.loadingFailed"></div>
+                                    </div>
+                                </div>
+                                <div class="whitespace" ng-show="pdSentryCtrl.sentries.length"></div>
+                            </div>
+                        </md-card>
+                    </div>
+                </md-content>
+            </md-tab>
+        </md-tabs>
+    </div>
+</body>
+</html>
