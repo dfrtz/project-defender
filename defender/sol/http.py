@@ -1,16 +1,19 @@
 import base64
+import json
 import logging
 import logging.handlers
 import os
+import re
 import socket
 import ssl
 import threading
+
 from http.server import BaseHTTPRequestHandler
 from pathlib import Path
 from socketserver import ThreadingTCPServer
 
 
-class ServerConfig(object):
+class ApiConfig(object):
     def __init__(self):
         self.web_root = os.path.abspath('html')
         self.log = 'httpd.log'
@@ -181,21 +184,84 @@ class ApiHandler(BaseHTTPRequestHandler):
         self.wfile.write(b'Authentication Failed')
 
     def do_GET(self):
+        if self.path.startswith('/api'):
+            args = re.sub('/api(/)?', '', self.path).rstrip('/').split('/')
+
+            if len(args) < 2 or args[0] == '':
+                # Bypass authentication if only checking versions
+                self.write_response(200,
+                                    [('Access-Control-Allow-Origin', '*'), ('Content-Type', 'application/json')],
+                                    '{{"versions": {}}}'.format(json.dumps(self.api_versions)))
+                return
+
+            if not self.authenticate():
+                return
+
+            self.serve_api()
+        else:
+            if not self.authenticate():
+                return
+
+            path = self.path
+
+            if path == '/':
+                path = os.path.abspath('{}/index.html'.format(self.server.config.web_root))
+            else:
+                path = os.path.abspath(self.server.config.web_root + path)
+
+            if path.startswith(os.path.abspath(self.server.config.web_root)):
+                # Only serve files under application root or user specified location
+                self.serve_file(os.path.abspath(path))
+            else:
+                self.send_error(404, self.responses[404][1])
+
+    def do_POST(self):
         if not self.authenticate():
             return
 
-        path = self.path
-
-        if path == '/':
-            path = os.path.abspath('{}/index.html'.format(self.server.config.web_root))
+        if self.path.startswith('/api'):
+            self.serve_api()
         else:
-            path = os.path.abspath(self.server.config.web_root + path)
+            self.send_error(400, self.responses[400][1])
 
-        if path.startswith(os.path.abspath(self.server.config.web_root)):
-            # Only serve files under application root or user specified location
-            self.serve_file(os.path.abspath(path))
+    def do_PUT(self):
+        if not self.authenticate():
+            return
+
+        if self.path.startswith('/api'):
+            self.serve_api()
         else:
-            self.send_error(404, self.responses[404][1])
+            self.send_error(400, self.responses[400][1])
+
+    def serve_api(self):
+        args = re.sub('/api(/)?', '', self.path).rstrip('/').strip().split('/')
+
+        rdata = None
+        rdata_length = self.headers.get('Content-Length', None)
+        rdata_format = self.headers.get('Content-Type', None)
+
+        if rdata_length is not None and int(rdata_length) > 0:
+            if rdata_format == 'application/json':
+                try:
+                    rdata = json.loads(self.rfile.read(int(rdata_length)).decode('UTF-8'))
+                except ValueError:
+                    self.log_message('%s', 'Invalid json rdata detected')
+
+        if self.command in self.api_options:
+            version = args[0]
+            if version in self.api_versions:
+                method_name = '{}_{}'.format(self.command.lower(), args[1].upper())
+                if hasattr(self, method_name):
+                    method = getattr(self, method_name)
+                    method(args, rdata)
+                    return
+            else:
+                self.write_response(400,
+                                    [('Access-Control-Allow-Origin', '*'), ('Content-Type', 'application/json')],
+                                    '{{"versions": {}}}'.format(json.dumps(self.api_versions)))
+                return
+
+        self.send_error(400, self.responses[400][1])
 
     def serve_file(self, path):
         try:
@@ -234,4 +300,4 @@ class ApiHandler(BaseHTTPRequestHandler):
         for header in headers:
             self.send_header(header[0], header[1])
         self.end_headers()
-        self.wfile.write(data.encode("utf-8"))
+        self.wfile.write(data.encode('utf-8'))
