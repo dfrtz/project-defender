@@ -4,7 +4,7 @@ import os
 
 from sol import sql
 from sol.http import ApiServer
-from sol.http import ServerConfig
+from sol.http import ApiConfig
 
 
 class AuthServer(ApiServer):
@@ -12,7 +12,7 @@ class AuthServer(ApiServer):
         return self.config.db.authenticate(user, password)
 
 
-class AuthServerConfig(ServerConfig):
+class AuthServerConfig(ApiConfig):
     def __init__(self):
         super(AuthServerConfig, self).__init__()
         self.thread_handler = AuthServer

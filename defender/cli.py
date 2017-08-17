@@ -11,7 +11,7 @@ class HostShell(shells.BaseShell):
         super(HostShell, self).__init__('Defender> ', *args)
 
         self._commands = []
-        self._config = http.ServerConfig()
+        self._config = http.ApiConfig()
         self._authdb = None
         self._httpd = None
 
