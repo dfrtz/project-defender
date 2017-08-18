@@ -4,10 +4,20 @@
 import argparse
 
 from cli import HostShell
-from media import *
 from sol.http import *
 from sol.secure import AuthDatabase
 from sol.secure import AuthServerConfig
+import time
+
+MODE_BOTH = 0
+MODE_CLIENT = 1
+MODE_SERVER = 2
+
+MODES = {
+    'both': MODE_BOTH,
+    'client': MODE_CLIENT,
+    'server': MODE_SERVER
+}
 
 
 class DefenderServerConfig(AuthServerConfig):
@@ -17,10 +27,20 @@ class DefenderServerConfig(AuthServerConfig):
         self.request_handler = DefenderHandler
         self.db = None
         self.mediad = None
+        self.mode = MODE_BOTH
 
 
 class DefenderHandler(ApiHandler):
-    file_exts = ('.css', '.html', '.js', '.json', '.ttf', '.map')
+    TEMPLATE_VIDEO = b'''
+        <html>
+            <head></head>
+            <body>
+                <img src="video"/>
+                <video controls="" autoplay="" name="media">
+                    <source src="audio" type="audio/x-wav">
+                </video>
+            </body>
+        </html>'''
 
     def init(self):
         self.api_options = ['GET', 'POST']
@@ -28,44 +48,45 @@ class DefenderHandler(ApiHandler):
         self.api_realm = 'sol-defender'
 
     def serve_file(self, path):
+        config = self.server.config
         # TODO Check if in server or client mode
-        mediad = self.server.config.mediad
 
         if path.endswith('.html'):
             self.send_response(200)
             self.send_header('Content-Type', 'text/html')
             self.end_headers()
-            self.wfile.write(MediaService.TEMPLATE)
-        elif path.endswith('/video'):
-            self.send_response(200)
-            self.send_header('Connection', 'close')
-            self.send_header('Pragma', 'no-store, no-cache')
-            self.send_header('Cache-Control',
-                             'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-            self.send_header('Expires', '-1')
-            self.send_header('Server', 'Python-MJPG-Streamer/0.1')
-            self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=--jpgbound')
-            self.end_headers()
+            self.wfile.write(self.TEMPLATE_VIDEO)
+        elif config.mode in {MODE_CLIENT, MODE_BOTH}:
+            if path.endswith('/video'):
+                self.send_response(200)
+                self.send_header('Connection', 'close')
+                self.send_header('Pragma', 'no-store, no-cache')
+                self.send_header('Cache-Control',
+                                 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
+                self.send_header('Expires', '-1')
+                self.send_header('Server', 'Python-MJPG-Streamer/0.1')
+                self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=--jpgbound')
+                self.end_headers()
 
-            try:
-                mediad.send_cv_stream(self)
-            except BrokenPipeError as e:
-                self.log_message('Broken Pipe')
-        elif path.endswith('/audio'):
-            self.send_response(200)
-            self.send_header('Connection', 'close')
-            self.send_header('Pragma', 'no-store, no-cache')
-            self.send_header('Cache-Control',
-                             'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-            self.send_header('Expires', '-1')
-            self.send_header('Server', 'Python-WAV-Streamer/0.1')
-            self.send_header('Content-Type', 'audio/x-wav')
-            self.end_headers()
+                try:
+                    config.mediad.send_cv_stream(self)
+                except BrokenPipeError as e:
+                    self.log_message('Broken Pipe')
+            elif path.endswith('/audio'):
+                self.send_response(200)
+                self.send_header('Connection', 'close')
+                self.send_header('Pragma', 'no-store, no-cache')
+                self.send_header('Cache-Control',
+                                 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
+                self.send_header('Expires', '-1')
+                self.send_header('Server', 'Python-WAV-Streamer/0.1')
+                self.send_header('Content-Type', 'audio/x-wav')
+                self.end_headers()
 
-            try:
-                mediad.send_pyaudio(self)
-            except BrokenPipeError as e:
-                self.log_message('Broken Pipe')
+                try:
+                    config.mediad.send_pyaudio(self)
+                except BrokenPipeError as e:
+                    self.log_message('Broken Pipe')
         else:
             super(DefenderHandler, self).serve_file(path)
 
@@ -101,8 +122,8 @@ def main():
     shell = HostShell()
     http_config = DefenderServerConfig()
     http_service = HttpService(http_config)
-    media_config = MediaConfig()
-    media_service = MediaService(media_config)
+
+
 
     # Create configurations and assign user defined variables
     if args.web_root:
@@ -117,20 +138,31 @@ def main():
         http_config.log = args.log
     if args.debug:
         http_config.debug = args.debug
-    if args.camera:
-        media_config.camera_dev = int(args.camera)
+
+    if args.mode:
+        http_config.mode = MODES.get(args.mode, MODE_BOTH)
 
     authdb = AuthDatabase(os.path.abspath(args.user_db))
 
     http_config.db = authdb
-    http_config.mediad = media_service
+
 
     shell.set_authdb(authdb)
     shell.set_httpd(http_service)
 
+
     # Start services before entering user prompt mode
     http_service.start()
-    media_service.start()
+    if http_config.mode in {MODE_CLIENT, MODE_BOTH}:
+        import media
+        media_config = media.MediaConfig()
+        media_service = media.MediaService(media_config)
+        http_config.mediad = media_service
+
+        if args.camera:
+            media_config.camera_dev = int(args.camera)
+
+        media_service.start()
 
     try:
         while shell.run_command(shell.prompt):
@@ -140,7 +172,8 @@ def main():
 
     # Ensure all threads are properly shutdown before exiting main loop
     http_service.shutdown()
-    media_service.shutdown()
+    if media_service:
+        media_service.shutdown()
 
     print('Services stopped. Exiting.')
 
