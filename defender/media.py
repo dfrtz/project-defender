@@ -1,12 +1,12 @@
 import base64
 import logging
 import logging.handlers
+import random
+import string
 import threading
 import time
 import wave
 from io import StringIO
-import random
-import string
 
 import cv2
 import pyaudio
@@ -126,17 +126,6 @@ class MediaConfig(object):
 
 
 class MediaService(object):
-    TEMPLATE = b'''
-    <html>
-        <head></head>
-        <body>
-            <img src="video"/>
-            <video controls="" autoplay="" name="media">
-                <source src="audio" type="audio/x-wav">
-            </video>
-        </body>
-    </html>'''
-
     def __init__(self, config):
         self.config = config
         self._thread = None
