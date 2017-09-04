@@ -11,9 +11,9 @@ class HostShell(shells.BaseShell):
         super(HostShell, self).__init__('Defender> ', *args)
 
         self._commands = []
-        self._config = http.ApiConfig()
         self._authdb = None
         self._httpd = None
+        self._mediad = None
 
         self.setup_parsers()
         self.setup_completer(self._commands)
@@ -72,8 +72,8 @@ class HostShell(shells.BaseShell):
     def set_httpd(self, httpd):
         self._httpd = httpd
 
-    def set_config(self, config):
-        self._config = config
+    def set_mediad(self, mediad):
+        self._mediad = mediad
 
     def execute_cmd(self, cmd):
         try:
