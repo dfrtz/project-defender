@@ -122,8 +122,7 @@ def main():
     shell = HostShell()
     http_config = DefenderServerConfig()
     http_service = HttpService(http_config)
-
-
+    media_service = None
 
     # Create configurations and assign user defined variables
     if args.web_root:
@@ -143,13 +142,10 @@ def main():
         http_config.mode = MODES.get(args.mode, MODE_BOTH)
 
     authdb = AuthDatabase(os.path.abspath(args.user_db))
-
     http_config.db = authdb
-
-
     shell.set_authdb(authdb)
     shell.set_httpd(http_service)
-
+    shell.set_mediad(media_service)
 
     # Start services before entering user prompt mode
     http_service.start()
