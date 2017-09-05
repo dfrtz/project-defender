@@ -5,6 +5,7 @@ III. Prepare Operating System for Headless First Boot
 IV. Prepare Operating System for Standard User Access
 V. Setup Python Development Environment
 VI. Setup OpenCV Development Environment
+VII. Setup Defender Development Environment
 
 
 I. Download Raspberry Pi Debian (Raspbian) Image
@@ -120,8 +121,9 @@ Main Menu > Interfacing Options > SSH
 9. Create a new administrator user:
 # adduser <username>
 
-10. Add the new user to sudo group:
+10. Add the new user to sudo and video groups:
 # adduser <username> sudo
+# adduser <username> video
 
 11. Logout of root and Raspberry Pi, and reconnect as new user:
 # exit
@@ -188,7 +190,10 @@ For mathematical optimizations:
     -D ENABLE_PRECOMPILED_HEADERS=OFF \
     -D CMAKE_INSTALL_PREFIX=/usr/local \
     -D INSTALL_PYTHON_EXAMPLES=ON \
-    -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-3.3.0/modules
+    -D WITH_FFMPEG=ON \
+    -D BUILD_JPEG=OFF
+    -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-3.3.0/modules \
+    -D BUILD_EXAMPLES=ON ..
 # make -j4
 
 If any errors are encountered and you need to start over, clean and make:
@@ -212,3 +217,13 @@ If any errors are encountered and you need to start over, clean and make:
 9. Optional - Cleanup OpenCV build environment:
 # cd ../../..
 # rm -rf opencv
+
+
+VII. Setup Defender Development Environment
+
+1. Install OS dependencies:
+# sudo apt-get install portaudio19-dev
+
+2. Install Python dependencies:
+# pip install pyaudio
+# pip install imutils
