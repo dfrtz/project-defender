@@ -29,8 +29,8 @@ class VideoStream(object):
         self._stop_event.clear()
 
         stream = cv2.VideoCapture(self.source)
-        # stream.set(cv2.CAP_PROP_FRAME_WIDTH, 320)
-        # stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 240)
+        # stream.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+        # stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 960)
 
         while not stream.isOpened() and not self._stop_event.is_set():
             print('Video stream could not open, waiting {} seconds and trying again'.format(5))

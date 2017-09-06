@@ -1,3 +1,8 @@
+READ THIS NOTICE - This guide was written and tested on Raspbian Stretch Lite (2017-08-16) and OpenCV 3.3.0, however the same
+steps (should) work in any Debian based any environment with minimal to no modification. Other Linux distros will
+require medium to heavy modification of the commands such as installing dependencies. Your mileage may vary.
+
+
 Sections:
 I. Download Raspberry Pi Debian (Raspbian) Image
 II. Installing the Operating System
@@ -187,18 +192,21 @@ For mathematical optimizations:
 # mkdir build
 # cd build
 # cmake -D CMAKE_BUILD_TYPE=RELEASE \
-    -D ENABLE_PRECOMPILED_HEADERS=OFF \
     -D CMAKE_INSTALL_PREFIX=/usr/local \
-    -D INSTALL_PYTHON_EXAMPLES=ON \
+    -D INSTALL_PYTHON_EXAMPLES=OFF \
     -D WITH_FFMPEG=ON \
-    -D BUILD_JPEG=OFF
+    -D BUILD_JPEG=OFF \
     -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-3.3.0/modules \
-    -D BUILD_EXAMPLES=ON ..
+    -D BUILD_EXAMPLES=OFF ..
 # make -j4
 
 If any errors are encountered and you need to start over, clean and make:
 # make clean
 # make -j4
+
+Additional Note - If not running Raspbian outlined in this guide, you may need to add the following to the 'cmake'
+command to build correctly:
+-D ENABLE_PRECOMPILED_HEADERS=OFF \
 
 6. Install OpenCV:
 # sudo make install
