@@ -129,6 +129,7 @@ Main Menu > Interfacing Options > SSH
 10. Add the new user to sudo and video groups:
 # adduser <username> sudo
 # adduser <username> video
+# adduser <username> audio
 
 11. Logout of root and Raspberry Pi, and reconnect as new user:
 # exit
@@ -167,6 +168,7 @@ VI. Setup OpenCV Development Environment
 # mkdir opencv
 # cd opencv
 # mkvirtualenv opencv -p python3
+# workon opencv
 
 2. Install NumPy
 # pip install numpy
@@ -193,9 +195,11 @@ For mathematical optimizations:
 # cd build
 # cmake -D CMAKE_BUILD_TYPE=RELEASE \
     -D CMAKE_INSTALL_PREFIX=/usr/local \
+    -D BUILD_EXAMPLES=OFF \
     -D INSTALL_PYTHON_EXAMPLES=OFF \
     -D WITH_FFMPEG=ON \
-    -D BUILD_JPEG=OFF \
+    -D WITH_JPEG=ON \
+    -D BUILD_JPEG=ON \
     -D OPENCV_EXTRA_MODULES_PATH=../../opencv_contrib-3.3.0/modules \
     -D BUILD_EXAMPLES=OFF ..
 # make -j4
@@ -207,6 +211,11 @@ If any errors are encountered and you need to start over, clean and make:
 Additional Note - If not running Raspbian outlined in this guide, you may need to add the following to the 'cmake'
 command to build correctly:
 -D ENABLE_PRECOMPILED_HEADERS=OFF \
+
+Additional Note - In you encounter log spam due to camera returning "extraneous bytes before marker" messages but the
+stream has no issues (for example, with Logitech C270 cameras), you may wish to comment out the following line
+from opencv-3.3.0/3rdparty/libjpeg/jdmarker.c and rebuild:
+//WARNMS2(cinfo, JWRN_EXTRANEOUS_DATA, cinfo->marker->discarded_bytes, c);
 
 6. Install OpenCV:
 # sudo make install
