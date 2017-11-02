@@ -13,7 +13,7 @@ MODE_BOTH = 0
 MODE_CLIENT = 1
 MODE_SERVER = 2
 
-MODES = {
+ARGS_MODES = {
     'both': MODE_BOTH,
     'client': MODE_CLIENT,
     'server': MODE_SERVER
@@ -139,7 +139,7 @@ def main():
         http_config.debug = args.debug
 
     if args.mode:
-        http_config.mode = MODES.get(args.mode, MODE_BOTH)
+        http_config.mode = ARGS_MODES.get(args.mode, MODE_BOTH)
 
     authdb = AuthDatabase(os.path.abspath(args.user_db))
     http_config.db = authdb

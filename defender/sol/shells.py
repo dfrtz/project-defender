@@ -5,7 +5,7 @@ import readline
 class BaseShell(object):
     def __init__(self, prompt='Shell> ', *args):
         self._original_completer = readline.get_completer()
-        self.__commands = ['exit', 'help']
+        self._commands = ['exit', 'help']
         self.setup_completer([])
 
         self.prompt = prompt
@@ -16,11 +16,11 @@ class BaseShell(object):
         self.parser.add_argument('exit', help='Exit subconsole', action='store')
 
     def setup_completer(self, commands):
-        self.__completer = ShellCompleter()
-        self.__completer.extend(self.__commands)
-        self.__completer.extend(commands)
+        self._completer = ShellCompleter()
+        self._completer.extend(self._commands)
+        self._completer.extend(commands)
 
-        readline.set_completer(self.__completer.complete)
+        readline.set_completer(self._completer.complete)
         readline.parse_and_bind("tab: complete")
         readline.set_completer_delims('')
 

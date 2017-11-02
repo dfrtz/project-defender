@@ -25,7 +25,7 @@ class VideoStream(object):
         threading.Thread(target=self.update, args=()).start()
         return self
 
-    def update(self):
+    def update(self, heartbeat_interval=1):
         self._stop_event.clear()
 
         stream = cv2.VideoCapture(self.source)
@@ -33,8 +33,8 @@ class VideoStream(object):
         # stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 960)
 
         while not stream.isOpened() and not self._stop_event.is_set():
-            print('Video stream could not open, waiting {} seconds and trying again'.format(5))
-            time.sleep(5)
+            print('Video stream could not open, waiting {} seconds and trying again'.format(heartbeat_interval))
+            time.sleep(heartbeat_interval)
             stream = cv2.VideoCapture(self.source)
 
         print('Video stream running.')
@@ -55,8 +55,8 @@ class VideoStream(object):
 class AudioStream(object):
     CHUNK = 128
     FORMAT = pyaudio.paInt16
-    CHANNELS = 2
-    RATE = 44100
+    CHANNELS = 1
+    RATE = 48000
 
     HEADER_WAV = b'UklGRiQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQAAAAA='  # WAV, 2 Channel, 44100 Hz
 
@@ -169,6 +169,11 @@ class MediaService(object):
         self.start()
 
     def start(self):
+        p = pyaudio.PyAudio()
+        for i in range(p.get_device_count()):
+            dev = p.get_device_info_by_index(i)
+            print('Slot {} : {} : {}\n'.format(i, dev['name'], dev))
+
         if self._thread is None:
             self.log_message('Media service starting', True)
             self.video_stream = VideoStream(source=self.config.camera_dev).start()
@@ -201,10 +206,13 @@ class MediaService(object):
         while True:
             try:
                 frame = self.video_stream.read()
-                ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 75])
+                ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
                 self.write_image(handler, jpeg.tobytes())
 
+                time.sleep(0.03)
+            except cv2.error:
+                print('TODO Blank image detected')
                 time.sleep(0.03)
             except KeyboardInterrupt:
                 break
@@ -268,7 +276,7 @@ class MediaService(object):
     def send_pyaudio(self, handler):
         CHUNK = 128
         FORMAT = pyaudio.paInt16
-        CHANNELS = 2
+        CHANNELS = 1
         RATE = 44100
 
         p = pyaudio.PyAudio()

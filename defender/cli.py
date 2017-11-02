@@ -81,8 +81,6 @@ class HostShell(shells.BaseShell):
         except SystemExit:
             return True
 
-        # TODO Move hash to AuthDatabase and implement salting
-
         command = args.parser
         if command == 'exit':
             try:
