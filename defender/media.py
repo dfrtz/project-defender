@@ -6,6 +6,7 @@ import string
 import threading
 import time
 import wave
+from io import BytesIO
 from io import StringIO
 
 import cv2
@@ -55,17 +56,15 @@ class VideoStream(object):
 class AudioStream(object):
     CHUNK = 128
     FORMAT = pyaudio.paInt16
-    CHANNELS = 1
-    RATE = 48000
-
-    HEADER_WAV = b'UklGRiQAAABXQVZFZm10IBAAAAABAAIARKwAABCxAgAEABAAZGF0YQAAAAA='  # WAV, 2 Channel, 44100 Hz
+    CHANNELS = 2
+    RATE = 44100
 
     def __init__(self):
         self.grabbed = None
         self.chunk = None
         self._stop_event = threading.Event()
-
         self.audio_handlers = {}
+        self.header = self.mk_wav_header()
 
     def start(self):
         print('Audio stream starting.')
@@ -88,10 +87,10 @@ class AudioStream(object):
             while not self._stop_event.is_set():
                 for key, event in self.audio_handlers.items():
                     event.clear()
-                self.chunk = stream.read(AudioStream.CHUNK)
+                self.chunk = stream.read()
                 for key, event in self.audio_handlers.items():
                     event.set()
-        except KeyboardInterrupt as e:
+        except KeyboardInterrupt:
             pass
         stream.stop_stream()
         stream.close()
@@ -105,23 +104,25 @@ class AudioStream(object):
         print('Audio stream stopping.')
         self._stop_event.set()
 
-    def gen_lock_id(self):
+    @staticmethod
+    def gen_lock_id():
         chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
         return ''.join(random.choice(chars) for _ in range(16))
 
-    def mk_wav_header(self, cached=True):
-        if cached:
-            with open('headeronly.wav', 'wb') as file_out:
-                file_out.write(base64.decodebytes(AudioStream.HEADER_WAV))
-        else:
-            p = pyaudio.PyAudio()
-            wf = wave.open('headeronly.wav', 'wb')
-            wf.setnchannels(AudioStream.CHANNELS)
-            wf.setsampwidth(p.get_sample_size(AudioStream.FORMAT))
-            wf.setframerate(AudioStream.RATE)
-            wf.writeframes(b'')
-            wf.close()
-            p.terminate()
+    @staticmethod
+    def mk_wav_header(channels=CHANNELS, form=FORMAT, framerate=RATE):
+        memory_file = BytesIO()
+
+        wave_file = wave.open(memory_file, 'w')
+        wave_file.setnchannels(channels)
+        wave_file.setsampwidth(pyaudio.get_sample_size(form))
+        wave_file.setframerate(framerate)
+        wave_file.writeframes(b'')
+        wave_file.close()
+
+        encoding = base64.encodebytes(memory_file.getvalue())
+        memory_file.close()
+        return encoding
 
 
 class MediaConfig(object):
@@ -169,10 +170,11 @@ class MediaService(object):
         self.start()
 
     def start(self):
-        p = pyaudio.PyAudio()
-        for i in range(p.get_device_count()):
-            dev = p.get_device_info_by_index(i)
-            print('Slot {} : {} : {}\n'.format(i, dev['name'], dev))
+        # TODO debug remove
+        # p = pyaudio.PyAudio()
+        # for i in range(p.get_device_count()):
+        #     dev = p.get_device_info_by_index(i)
+        #     print('Slot {} : {} : {}\n'.format(i, dev['name'], dev))
 
         if self._thread is None:
             self.log_message('Media service starting', True)
@@ -194,7 +196,8 @@ class MediaService(object):
         else:
             self.log_message('Media service offline. Aborting repeat shutdown.', True)
 
-    def write_image(self, handler, image):
+    @staticmethod
+    def write_image(handler, image):
         handler.wfile.write(b'--jpgbound\r\n')
         handler.send_header('X-Timestamp', time.time())
         handler.send_header('Content-Length', len(image))
@@ -209,13 +212,11 @@ class MediaService(object):
                 ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
 
                 self.write_image(handler, jpeg.tobytes())
-
-                time.sleep(0.03)
             except cv2.error:
-                print('TODO Blank image detected')
-                time.sleep(0.03)
+                pass
             except KeyboardInterrupt:
                 break
+            time.sleep(0.03)
 
     def send_cv_detection_stream(self, handler):
         while self.video_stream.isOpened():
@@ -243,7 +244,7 @@ class MediaService(object):
                     continue
 
                 img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                tmp_file = StringIO.StringIO()
+                tmp_file = StringIO()
                 Image.fromarray(img).save(tmp_file, 'JPEG')
 
                 self.write_image(handler, tmp_file.getvalue())
@@ -254,9 +255,9 @@ class MediaService(object):
                 break
 
     def send_audio_stream(self, handler):
-        handler.wfile.write(base64.decodebytes(AudioStream.HEADER_WAV))
-        lock = threading.Event()
+        handler.wfile.write(base64.decodebytes(self.audio_stream.header))
         lock_id = self.audio_stream.gen_lock_id()
+        lock = threading.Event()
         self.audio_stream.audio_handlers[lock_id] = lock
 
         print("Audio lock " + lock_id)
@@ -289,13 +290,13 @@ class MediaService(object):
 
         print("* recording")
 
-        handler.wfile.write(base64.decodebytes(AudioStream.HEADER_WAV))
+        handler.wfile.write(base64.decodebytes(self.audio_stream.header))
         try:
             while True:
                 data = stream.read(CHUNK)
                 if len(data):
                     handler.wfile.write(data)
-        except KeyboardInterrupt as e:
+        except KeyboardInterrupt:
             pass
 
         print("* stopping")

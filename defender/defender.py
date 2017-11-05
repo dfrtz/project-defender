@@ -160,6 +160,8 @@ def main():
 
         media_service.start()
 
+        # TODO debug
+        print(media.AudioStream.mk_wav_header())
     try:
         while shell.run_command(shell.prompt):
             pass

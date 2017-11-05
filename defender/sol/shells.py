@@ -41,14 +41,26 @@ class BaseShell(object):
                 return self.execute_cmd(cmd)
 
     def execute_cmd(self, cmd):
-        if cmd.startswith('exit'):
-            if self._original_completer is not None:
-                readline.set_completer(self._original_completer)
-            return False
-        elif cmd.startswith('help'):
-            if self.parser:
-                self.parser.print_help()
-        return True
+        try:
+            args = self.parser.parse_args(cmd.split())
+        except SystemExit:
+            return True
+
+        command = args.root
+        method_name = 'cmd_{}'.format(command.upper())
+
+        if hasattr(self, method_name):
+            method = getattr(self, method_name)
+            return method(args)
+        else:
+            if cmd.startswith('exit'):
+                if self._original_completer is not None:
+                    readline.set_completer(self._original_completer)
+                return False
+            elif cmd.startswith('help'):
+                if self.parser:
+                    self.parser.print_help()
+            return True
 
 
 class ShellCompleter(list):
