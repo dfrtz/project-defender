@@ -2,7 +2,7 @@ import argparse
 import getpass
 import json
 
-from sol import shells, http
+from sol import shells
 from sol.secure import AuthenticationTable
 
 
@@ -22,7 +22,7 @@ class HostShell(shells.BaseShell):
         self.parser = argparse.ArgumentParser(prog='', description='Home Defense Monitoring System')
 
         # First level parsers
-        parsers = self.parser.add_subparsers(title='Commands', dest='parser')
+        parsers = self.parser.add_subparsers(title='Commands', dest='root')
         parsers.required = True
 
         parser_help = parsers.add_parser('help', help='List commands and functions')
@@ -75,111 +75,106 @@ class HostShell(shells.BaseShell):
     def set_mediad(self, mediad):
         self._mediad = mediad
 
-    def execute_cmd(self, cmd):
+    def cmd_EXIT(self, args):
         try:
-            args = self.parser.parse_args(cmd.split())
-        except SystemExit:
-            return True
-
-        command = args.parser
-        if command == 'exit':
-            try:
-                if not args.force:
-                    response = input('Exit shell and shutdown all services? Y/n: ')
-                    if response == 'Y' or response == 'y':
-                        return False
-                else:
+            if not args.force:
+                response = input('Exit shell and shutdown all services? Y/n: ')
+                if response == 'Y' or response == 'y':
                     return False
-            except EOFError:
-                print('')
+            else:
                 return False
-            except KeyboardInterrupt:
-                print('')
-        elif command == 'http':
-            level = args.level
-            if level == 'debug':
+        except EOFError:
+            print('')
+            return False
+        except KeyboardInterrupt:
+            print('')
+        return True
+
+    def cmd_HTTP(self, args):
+        level = args.level
+        if level == 'debug':
+            response = input(
+                'Warning: Enabling debugging will send additional output to console and logs, and restart the HTTP server.\n'
+                + 'Do you wish to continue? Y/n: ')
+            if response == 'Y' or response == 'y':
+                self._httpd.set_debug(True)
+        elif level == 'info':
+            response = input('Warning: disabling debugging will restart the HTTP server.\n'
+                             + 'Do you wish to continue? Y/n: ')
+            if response == 'Y' or response == 'y':
+                self._httpd.set_debug(False)
+        return True
+
+    def cmd_SERVICE(self, args):
+        service = args.service
+
+        if service == 'http':
+            action = args.action
+
+            if action == 'start':
+                self._httpd.start()
+            elif action == 'stop':
                 response = input(
-                    'Warning: Enabling debugging will send additional output to console and logs, and restart the HTTP server.\n'
+                    'Warning: Stopping the HTTP service will prevent external access to commands, user shell will be required to restart.\n'
                     + 'Do you wish to continue? Y/n: ')
                 if response == 'Y' or response == 'y':
-                    self._httpd.set_debug(True)
-            elif level == 'info':
-                response = input('Warning: disabling debugging will restart the HTTP server.\n'
-                                 + 'Do you wish to continue? Y/n: ')
-                if response == 'Y' or response == 'y':
-                    self._httpd.set_debug(False)
-        elif command == 'service':
-            service = args.service
-
-            if service == 'http':
-                action = args.action
-
-                if action == 'start':
-                    self._httpd.start()
-                elif action == 'stop':
-                    response = input(
-                        'Warning: Stopping the HTTP service will prevent external access to commands, user shell will be required to restart.\n'
-                        + 'Do you wish to continue? Y/n: ')
-                    if response == 'Y' or response == 'y':
-                        self._httpd.shutdown()
-        elif command == 'user':
-            action = args.action
-            user = ''
-            if action != 'list':
-                user = args.username
-
-            if action == 'add':
-                if self._authdb.get_user(user):
-                    print('{} already exists. To modify user, use: user edit {}'.format(user, user))
-                    return True
-
-                password1 = getpass.getpass('Enter password for {}:'.format(user))
-                # TODO add check against simple Passwords
-                password2 = getpass.getpass('Re-enter password for {}:'.format(user))
-
-                if password1 != password2:
-                    print('Passwords do not match')
-                else:
-                    self._authdb.add_user(user, password1)
-            elif action == 'remove':
-                entry = self._authdb.get_user(user)
-                if not entry:
-                    print('User {} does not exist'.format(user))
-                    return True
-
-                response = input('Do you wish to revoke user {}\'s access?.\n'.format(user)
-                                 + 'Re-enter user\'s name to continue: ')
-                if response == user:
-                    if self._authdb.remove_user(user):
-                        print('User {} access revoked.'.format(user))
-                    else:
-                        print('Could not revoke user {} access. Please try again.'.format(user))
-                else:
-                    print('User confirmation did not match. Please try again.')
-            elif action == 'edit':
-                # TODO Allow username change
-                entry = self._authdb.get_user(user)
-                if not entry:
-                    print('User {} does not exist'.format(user))
-                    return True
-
-                password1 = getpass.getpass('Enter password for {}:'.format(user))
-                # TODO add check against simple Passwords
-                password2 = getpass.getpass('Re-enter password for {}:'.format(user))
-
-                if password1 != password2:
-                    print('Passwords do not match')
-                else:
-                    entry[AuthenticationTable.COLUMN_PASS] = self._authdb.encrypt(password1, entry[
-                        AuthenticationTable.COLUMN_SALT])
-                    self._authdb.edit_user(user, entry)
-            elif action == 'list':
-                # TODO Allow username change
-                entries = self._authdb.get_users()
-                if entries:
-                    print('User list:\n{}'.format(json.dumps(entries)))
-                    return True
-        else:
-            return super(HostShell, self).execute_cmd(command)
-
+                    self._httpd.shutdown()
         return True
+
+    def cmd_USER(self, args):
+        action = args.action
+        user = ''
+        if action != 'list':
+            user = args.username
+
+        if action == 'add':
+            if self._authdb.get_user(user):
+                print('{} already exists. To modify user, use: user edit {}'.format(user, user))
+                return True
+
+            password1 = getpass.getpass('Enter password for {}:'.format(user))
+            # TODO add check against simple Passwords
+            password2 = getpass.getpass('Re-enter password for {}:'.format(user))
+
+            if password1 != password2:
+                print('Passwords do not match')
+            else:
+                self._authdb.add_user(user, password1)
+        elif action == 'remove':
+            entry = self._authdb.get_user(user)
+            if not entry:
+                print('User {} does not exist'.format(user))
+                return True
+
+            response = input('Do you wish to revoke user {}\'s access?.\n'.format(user)
+                             + 'Re-enter user\'s name to continue: ')
+            if response == user:
+                if self._authdb.remove_user(user):
+                    print('User {} access revoked.'.format(user))
+                else:
+                    print('Could not revoke user {} access. Please try again.'.format(user))
+            else:
+                print('User confirmation did not match. Please try again.')
+        elif action == 'edit':
+            # TODO Allow username change
+            entry = self._authdb.get_user(user)
+            if not entry:
+                print('User {} does not exist'.format(user))
+                return True
+
+            password1 = getpass.getpass('Enter password for {}:'.format(user))
+            # TODO add check against simple Passwords
+            password2 = getpass.getpass('Re-enter password for {}:'.format(user))
+
+            if password1 != password2:
+                print('Passwords do not match')
+            else:
+                entry[AuthenticationTable.COLUMN_PASS] = self._authdb.encrypt(password1, entry[
+                    AuthenticationTable.COLUMN_SALT])
+                self._authdb.edit_user(user, entry)
+        elif action == 'list':
+            # TODO Allow username change
+            entries = self._authdb.get_users()
+            if entries:
+                print('User list:\n{}'.format(json.dumps(entries)))
+                return True
