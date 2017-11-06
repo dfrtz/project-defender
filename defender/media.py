@@ -15,8 +15,8 @@ from PIL import Image
 
 
 class VideoStream(object):
-    def __init__(self, source=0):
-        self.source = source
+    def __init__(self, config):
+        self.config = config
         self.grabbed = None
         self.frame = None
         self._stop_event = threading.Event()
@@ -29,14 +29,14 @@ class VideoStream(object):
     def update(self, heartbeat_interval=1):
         self._stop_event.clear()
 
-        stream = cv2.VideoCapture(self.source)
+        stream = cv2.VideoCapture(self.config.device)
         # stream.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
         # stream.set(cv2.CAP_PROP_FRAME_HEIGHT, 960)
 
         while not stream.isOpened() and not self._stop_event.is_set():
             print('Video stream could not open, waiting {} seconds and trying again'.format(heartbeat_interval))
             time.sleep(heartbeat_interval)
-            stream = cv2.VideoCapture(self.source)
+            stream = cv2.VideoCapture(self.config.device)
 
         print('Video stream running.')
 
@@ -54,20 +54,17 @@ class VideoStream(object):
 
 
 class AudioStream(object):
-    CHUNK = 128
-    FORMAT = pyaudio.paInt16
-    CHANNELS = 2
-    RATE = 44100
-
-    def __init__(self):
+    def __init__(self, config):
+        self.config = config
         self.grabbed = None
         self.chunk = None
         self._stop_event = threading.Event()
         self.audio_handlers = {}
-        self.header = self.mk_wav_header()
+        self.header = ''
 
     def start(self):
         print('Audio stream starting.')
+        self.mk_wav_header(self.config.channels, self.config.format, self.config.framerate)
         # threading.Thread(target=self.update, args=()).start()
         return self
 
@@ -76,11 +73,11 @@ class AudioStream(object):
 
         p = pyaudio.PyAudio()
 
-        stream = p.open(format=AudioStream.FORMAT,
-                        channels=AudioStream.CHANNELS,
-                        rate=AudioStream.RATE,
+        stream = p.open(format=self.config.format,
+                        channels=self.config.channels,
+                        rate=self.config.framerate,
                         input=True,
-                        frames_per_buffer=AudioStream.CHUNK)
+                        frames_per_buffer=self.config.chunk)
 
         print('Audio stream running.')
         try:
@@ -110,7 +107,7 @@ class AudioStream(object):
         return ''.join(random.choice(chars) for _ in range(16))
 
     @staticmethod
-    def mk_wav_header(channels=CHANNELS, form=FORMAT, framerate=RATE):
+    def mk_wav_header(channels, form, framerate):
         memory_file = BytesIO()
 
         wave_file = wave.open(memory_file, 'w')
@@ -125,9 +122,49 @@ class AudioStream(object):
         return encoding
 
 
+class VideoConfig(object):
+    DEVICE = 0
+    WIDTH = 640
+    HEIGHT = 480
+    FRAMERATE = 30
+    QUALITY = 85
+
+    def __init__(self, user_config=None):
+        self.device = VideoConfig.DEVICE
+        self.width = VideoConfig.WIDTH
+        self.height = VideoConfig.HEIGHT
+        self.framerate = VideoConfig.FRAMERATE
+        self.quality = VideoConfig.QUALITY
+
+        if user_config:
+            # TODO validate
+            pass
+
+
+class AudioConfig(object):
+    DEVICE = 0
+    CHUNK = 128
+    FORMAT = pyaudio.paInt16
+    CHANNELS = 2
+    RATE = 44100
+
+    def __init__(self, user_config=None):
+        self.device = AudioConfig.DEVICE
+        self.chunk = AudioConfig.CHUNK
+        self.format = AudioConfig.FORMAT
+        self.channels = AudioConfig.CHANNELS
+        self.framerate = AudioConfig.RATE
+
+        if user_config:
+            # TODO validate
+            pass
+
+
 class MediaConfig(object):
-    def __init__(self):
-        self.camera_dev = 0
+    def __init__(self, user_config=None):
+        self.video = VideoConfig(user_config.get('video', {}) if user_config else {})
+        self.audio = VideoConfig(user_config.get('audio', {}) if user_config else {})
+
         self.log = 'media.log'
         self.debug = False
 
@@ -178,9 +215,9 @@ class MediaService(object):
 
         if self._thread is None:
             self.log_message('Media service starting', True)
-            self.video_stream = VideoStream(source=self.config.camera_dev).start()
+            self.video_stream = VideoStream(self.config.video).start()
             self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-            self.audio_stream = AudioStream().start()
+            self.audio_stream = AudioStream(self.config.audio).start()
             self._thread = True
             self.log_message('Media service listening to video and audio.')
         else:
@@ -206,17 +243,19 @@ class MediaService(object):
         handler.wfile.write(image)
 
     def send_cv_stream(self, handler):
+        interval = 1000 / self.config.video.framerate
+        quality = self.config.video.quality
         while True:
             try:
                 frame = self.video_stream.read()
-                ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
 
                 self.write_image(handler, jpeg.tobytes())
             except cv2.error:
                 pass
             except KeyboardInterrupt:
                 break
-            time.sleep(0.03)
+            time.sleep(interval)
 
     def send_cv_detection_stream(self, handler):
         while self.video_stream.isOpened():

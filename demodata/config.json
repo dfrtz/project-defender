@@ -1,0 +1,27 @@
+{
+  "server": {
+    "html": "../demodata/html",
+    "cert": "../demodata/server.pem",
+    "address": "0.0.0.0",
+    "port": 8080,
+    "log": "",
+    "mode": "both",
+    "debug": false,
+    "database": {
+      "user" : "../demodata/user_ath.db"
+    }
+  },
+  "media": {
+    "video": {
+      "width": 1280,
+      "height": 720,
+      "fps": 30,
+      "quality" : 85
+    },
+    "audio": {
+      "channels": 1,
+      "rate": 48000
+    },
+    "log": "media.log"
+  }
+}
