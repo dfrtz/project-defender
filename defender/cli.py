@@ -169,8 +169,8 @@ class HostShell(shells.BaseShell):
             if password1 != password2:
                 print('Passwords do not match')
             else:
-                entry[AuthenticationTable.COLUMN_PASS] = self._authdb.encrypt(password1, entry[
-                    AuthenticationTable.COLUMN_SALT])
+                entry[AuthenticationTable.COLUMN_PASS] = self._authdb.encrypt(
+                    password1, entry[AuthenticationTable.COLUMN_SALT])
                 self._authdb.edit_user(user, entry)
         elif action == 'list':
             # TODO Allow username change

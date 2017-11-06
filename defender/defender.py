@@ -52,6 +52,7 @@ class DefenderHandler(ApiHandler):
         # TODO Check if in server or client mode
 
         if path.endswith('.html'):
+            # TODO Show main page
             self.send_response(200)
             self.send_header('Content-Type', 'text/html')
             self.end_headers()
@@ -110,7 +111,7 @@ def parse_args():
     parser.add_argument('-u', '--user-db', help='User Authentication SQL database.', default='user_auth.db')
     parser.add_argument('-m', '--mode', help='Application run mode.', choices=['client', 'server', 'both'],
                         default='both')
-    parser.add_argument('-c', '--camera', help='Camera device id when running in client mode')
+    parser.add_argument('-c', '--config', help='Configuration file')
     parser.add_argument('-d', '--debug', help='Enable debugging on launch', action='store_true')
 
     return parser.parse_args()
@@ -141,6 +142,18 @@ def main():
     if args.mode:
         http_config.mode = ARGS_MODES.get(args.mode, MODE_BOTH)
 
+    config = {}
+    if args.config:
+        try:
+            with open(args.config) as data_file:
+                config = json.load(data_file)
+        except ValueError:
+            pass
+            # self.log_message('Invalid configuration file detected: {}'.format(args.config))
+        except FileNotFoundError:
+            pass
+            # self.log_message('No configuration file found: {}'.format(args.config))
+
     authdb = AuthDatabase(os.path.abspath(args.user_db))
     http_config.db = authdb
     shell.set_authdb(authdb)
@@ -151,7 +164,7 @@ def main():
     http_service.start()
     if http_config.mode in {MODE_CLIENT, MODE_BOTH}:
         import media
-        media_config = media.MediaConfig()
+        media_config = media.MediaConfig(video=config.get('video', None), audio=config.get('audio', None))
         media_service = media.MediaService(media_config)
         http_config.mediad = media_service
 
