@@ -163,7 +163,7 @@ class AudioConfig(object):
 class MediaConfig(object):
     def __init__(self, user_config=None):
         self.video = VideoConfig(user_config.get('video', {}) if user_config else {})
-        self.audio = VideoConfig(user_config.get('audio', {}) if user_config else {})
+        self.audio = AudioConfig(user_config.get('audio', {}) if user_config else {})
 
         self.log = 'media.log'
         self.debug = False

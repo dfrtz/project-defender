@@ -63,20 +63,20 @@ configuration. The file will be deleted after first boot.
 
 6. If using wired connection, skip and go to step 9. If using wireless, edit the network configuration to allow Wifi to
 connect on boot. Open the interface configuration file using a text editor. Examples:
-# vi /etc/network/interfaces
+# vi /mnt/rpi/system/etc/network/interfaces
 OR:
-# nano /etc/network/interfaces
+# nano /mnt/rpi/system/etc/network/interfaces
 
 7. Add everything after <Begin> and before <End> tags, replacing wpa-ssid and wpa-psk as appropriate for your network:
 <Begin>
 auto lo
-
 iface lo inet loopback
+
+auto eth0
 iface eth0 inet dhcp
 
 allow-hotplug wlan0
 auto wlan0
-
 iface wlan0 inet dhcp
         wpa-ssid "My network name"
         wpa-psk "My network password"
@@ -121,12 +121,12 @@ Navigation Breadcrumbs:
 Main Menu > Hostname
 Main Menu > Interfacing Options > SSH
 
-8. Exit configuration tool by selecting "Finish".
+8. Exit configuration tool by selecting "Finish". Do not reboot yet.
 
 9. Create a new administrator user:
 # adduser <username>
 
-10. Add the new user to sudo and video groups:
+10. Add the new user to sudo and media groups:
 # adduser <username> sudo
 # adduser <username> video
 # adduser <username> audio
@@ -146,6 +146,9 @@ Main Menu > Interfacing Options > SSH
 # sudo apt-get update
 # sudo apt-get upgrade
 
+15. Reboot:
+# sudo reboot
+
 
 V. Setup Python Development Environment
 
@@ -164,7 +167,7 @@ echo "source /usr/local/bin/virtualenvwrapper.sh" >> ~/.profile
 
 VI. Setup OpenCV Development Environment
 
-1. Make virtual environment for OpenCV
+1. Make development folder and virtual environment for OpenCV
 # mkdir opencv
 # cd opencv
 # mkvirtualenv opencv -p python3
@@ -233,7 +236,7 @@ from opencv-3.3.0/3rdparty/libjpeg/jdmarker.c and rebuild:
 
 9. Optional - Cleanup OpenCV build environment:
 # cd ../../..
-# rm -rf opencv
+# rm -r opencv
 
 
 VII. Setup Defender Development Environment
