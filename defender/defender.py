@@ -164,17 +164,17 @@ def main():
     http_service.start()
     if http_config.mode in {MODE_CLIENT, MODE_BOTH}:
         import media
-        media_config = media.MediaConfig(video=config.get('video', None), audio=config.get('audio', None))
+        media_config = media.MediaConfig(config.get('media', None))
         media_service = media.MediaService(media_config)
         http_config.mediad = media_service
 
         if args.camera:
-            media_config.camera_dev = int(args.camera)
+            media_config.video.device = int(args.camera)
 
         media_service.start()
 
         # TODO debug
-        print(media.AudioStream.mk_wav_header())
+        # print(media.AudioStream.mk_wav_header())
     try:
         while shell.run_command(shell.prompt):
             pass

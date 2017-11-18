@@ -1,14 +1,14 @@
 {
   "server": {
-    "html": "../demodata/html",
-    "cert": "../demodata/server.pem",
+    "html": "demodata/html",
+    "cert": "demodata/server.pem",
     "address": "0.0.0.0",
     "port": 8080,
     "log": "",
     "mode": "both",
     "debug": false,
     "database": {
-      "user" : "../demodata/user_ath.db"
+      "user" : "demodata/user_ath.db"
     }
   },
   "media": {
