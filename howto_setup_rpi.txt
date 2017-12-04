@@ -1,5 +1,5 @@
 READ THIS NOTICE - This guide was written and tested on Raspbian Stretch Lite (2017-08-16) and OpenCV 3.3.0, however the same
-steps (should) work in any Debian based any environment with minimal to no modification. Other Linux distros will
+steps (should) work in any Debian based environment with minimal to no modification. Other Linux distros will
 require medium to heavy modification of the commands such as installing dependencies. Your mileage may vary.
 
 
@@ -159,7 +159,7 @@ V. Setup Python Development Environment
 # sudo pip3 install virtualenv virtualenvwrapper
 # sudo rm -rf ~/.cache/pip
 
-3. Update profile with virtual environment wrapper for additional commands and to show currently active workspace:
+3. Update user profile with virtual environment wrapper for additional commands and to show currently active workspace:
 echo "export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python3" >> ~/.profile
 echo "export WORKON_HOME=$HOME/.virtualenvs" >> ~/.profile
 echo "source /usr/local/bin/virtualenvwrapper.sh" >> ~/.profile
@@ -215,7 +215,7 @@ Additional Note - If not running Raspbian outlined in this guide, you may need t
 command to build correctly:
 -D ENABLE_PRECOMPILED_HEADERS=OFF \
 
-Additional Note - In you encounter log spam due to camera returning "extraneous bytes before marker" messages but the
+Additional Note - If you encounter log spam due to camera returning "extraneous bytes before marker" messages but the
 stream has no issues (for example, with Logitech C270 cameras), you may wish to comment out the following line
 from opencv-3.3.0/3rdparty/libjpeg/jdmarker.c and rebuild:
 //WARNMS2(cinfo, JWRN_EXTRANEOUS_DATA, cinfo->marker->discarded_bytes, c);
@@ -224,7 +224,7 @@ from opencv-3.3.0/3rdparty/libjpeg/jdmarker.c and rebuild:
 # sudo make install
 # sudo ldconfig
 
-7. Symlink library to virtual environment (original .so name and Python subdirectory may vary based on versions):
+7. Symlink library to virtual environment (original .so name and Python subdirectory will vary based on versions):
 # ln -s /usr/local/lib/python3.x/site-packages/cv2.cpython-35m.so ~/.virtualenvs/opencv/lib/python3.x/site-packages/cv2.so
 
 8. Verify installation and link to virtual environment:

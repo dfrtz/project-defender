@@ -1,8 +1,8 @@
 (function(root, factory) {
   if (typeof define === 'function' && define.amd) {
-    define(['angular', 'objectpath', 'tv4'], factory);
+    define(['angular', '../ObjectPath', '../tv4'], factory);
   } else if (typeof exports === 'object') {
-    module.exports = factory(require('angular'), require('objectpath'), require('tv4'));
+    module.exports = factory(require('angular'), require('../ObjectPath'), require('../tv4'));
   } else {
     root.schemaForm = factory(root.angular, root.objectpath, root.tv4);
   }

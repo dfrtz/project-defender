@@ -137,6 +137,7 @@ class VideoConfig(object):
         self.quality = VideoConfig.QUALITY
 
         if user_config:
+            self.device = user_config.get('device', self.device)
             # TODO validate
             pass
 
@@ -243,7 +244,7 @@ class MediaService(object):
         handler.wfile.write(image)
 
     def send_cv_stream(self, handler):
-        interval = 1000 / self.config.video.framerate
+        interval = 1 / self.config.video.framerate
         quality = self.config.video.quality
         while True:
             try:
