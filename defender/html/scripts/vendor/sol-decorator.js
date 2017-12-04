@@ -1,69 +1,130 @@
-angular.module('solDecorator', ['ngMaterial', 'ngAnimate', 'ngRoute', 'ngSanitize']);
+/**
+ * @file AngularJS library containing functions to modify behavior of HTML elements.
+ *
+ * @summary Custom element actions for HTML markup.
+ *
+ * @author David Fritz
+ * @version 1.0.0
+ *
+ * @copyright 2015-2017 David Fritz
+ * @license MIT
+ */
 
-angular.module('solDecorator').directive('solLongClick', function($timeout) {
+/**
+ * AngularJS based decoration module for modifying markup behavior.
+ * @module solDecorator
+ */
+angular.module("solDecorator", ['ngMaterial', 'ngAnimate', 'ngRoute', 'ngSanitize']);
+
+/**
+ * @ngdoc directive
+ * @name solLongClick
+ *
+ * @description
+ * Performs long click operation on element using mouse events.
+ *
+ * @element ANY
+ *
+ * @param {string} function Name of function to call.
+ */
+angular.module("solDecorator").directive('solLongClick', function ($timeout) {
     return {
         restrict: 'A',
-        link: function($scope, $elem, $attrs) {
-            $elem.bind('mousedown', function(event) {
+        link: function ($scope, $elem, $attrs) {
+            $elem.bind('mousedown', function (event) {
                 $scope.longClick = true;
 
-                $timeout(function() {
+                $timeout(function () {
                     if ($scope.longClick) {
-                        $scope.$apply(function() {
+                        $scope.$apply(function () {
                             $scope.$eval($attrs.solLongClick)
                         });
                     }
                 }, 500);
             });
 
-            $elem.bind('mouseup', function(event) {
+            $elem.bind('mouseup', function (event) {
                 $scope.longClick = false;
             });
         }
     };
 });
 
-angular.module('solDecorator').directive('solLongPress', function($timeout) {
+/**
+ * @ngdoc directive
+ * @name solLongPress
+ *
+ * @description
+ * Performs long press operation on element using touch events.
+ *
+ * @element ANY
+ *
+ * @param {string} function Name of function to call.
+ */
+angular.module("solDecorator").directive('solLongPress', function longPress($timeout) {
     return {
         restrict: 'A',
-        link: function($scope, $elem, $attrs) {
-            $elem.bind('touchstart', function(event) {
+        link: function ($scope, $elem, $attrs) {
+            $elem.bind('touchstart', function (event) {
                 $scope.longPress = true;
 
-                $timeout(function() {
+                $timeout(function () {
                     if ($scope.longPress) {
-                        $scope.$apply(function() {
+                        $scope.$apply(function () {
                             $scope.$eval($attrs.solLongPress)
                         });
                     }
                 }, 500);
             });
 
-            $elem.bind('touchend', function(event) {
+            $elem.bind('touchend', function (event) {
                 $scope.longPress = false;
             });
         }
     };
 });
 
-angular.module('solDecorator').directive('solOnready', function($parse) {
+/**
+ * @ngdoc directive
+ * @name solOnReady
+ *
+ * @description
+ * Calls a function when element reports ready status
+ *
+ * @element ANY
+ *
+ * @param {string} function Name of function to call.
+ */
+angular.module("solDecorator").directive('solOnready', function ($parse) {
     return {
         restrict: 'A',
-        link: function(scope, elem, attrs) {
-            elem.ready(function() {
-                scope.$apply(function() {
+        link: function (scope, elem, attrs) {
+            elem.ready(function () {
+                scope.$apply(function () {
                     var func = $parse(attrs.solOnready);
-                func(scope);
+                    func(scope);
+                });
             });
-        });
-       }
-   };
+        }
+    };
 });
 
-angular.module('solDecorator').directive("solScaleImage", [
-    function() {
+/**
+ * @ngdoc directive
+ * @name solScaleImage
+ *
+ * @description
+ * Applies width and height values to child elements to match container size.
+ *
+ * @element ANY
+ *
+ * @param {number|string} width Horizontal size of element.
+ * @param {number|string} height Vertical size of element.
+ */
+angular.module("solDecorator").directive("solScaleImage", [
+    function () {
         return {
-            link: function(scope, elm, attrs) {
+            link: function (scope, elm, attrs) {
                 attrs.$observe('solScaleImage', function (value) {
                     elm.css('width', value + 'px');
                     elm.css('height', value + 'px');
@@ -73,32 +134,51 @@ angular.module('solDecorator').directive("solScaleImage", [
     }
 ]);
 
-angular.module('solDecorator').directive("solBackgroudSrc", [
-    function() {
+/**
+ * @ngdoc directive
+ * @name solBackgroudSrc
+ *
+ * @description
+ * Applies URL as background of element.
+ *
+ * @element ANY
+ *
+ * @param {string} url Link of image to set at background.
+ */
+angular.module("solDecorator").directive("solBackgroudSrc", [
+    function () {
         return {
-            link: function(scope, element, attrs) {
+            link: function (scope, element, attrs) {
                 attrs.$observe('solBackgroudSrc', function (value) {
-                    element.css('background', 'url(' + value +') center / cover');
+                    element.css('background', 'url(' + value + ') center / cover');
                 });
             }
         };
     }
 ]);
 
-angular.module('solDecorator').directive('solSlideable', function () {
+/**
+ * @ngdoc directive
+ * @name solSlideable
+ *
+ * @description
+ * Allows element to slide vertically into and out of view from top border.
+ *
+ * @element ANY
+ *
+ * @param {boolean} expanded State of element expansion on first render.
+ */
+angular.module("solDecorator").directive("solSlideable", function () {
     return {
-        restrict:'C',
-        /*transclude: true,
-        templateUrl: function(elem, attr) {
-            return '<div class="slideable-content" style="padding-bottom: 5px !important"><div ng-transclude></div></div>';
-        },*/
+        restrict: 'C',
+
         compile: function (element, attr) {
             var contents = element.html();
             element.html('<div class="sol-slideable-content" style="padding-bottom: 5px !important">' + contents + '</div>');
 
             return function postLink(scope, element, attrs) {
                 // Set default attributes
-                attrs.expanded = (attrs.expanded == "true") ? true : false;
+                attrs.expanded = attrs.expanded === "true";
                 attrs.duration = (!attrs.duration) ? '0.5s' : attrs.duration;
                 attrs.easing = (!attrs.easing) ? 'ease' : attrs.easing;
 
@@ -129,21 +209,35 @@ angular.module('solDecorator').directive('solSlideable', function () {
     };
 });
 
-angular.module('solDecorator').directive('solSlideableToggle', function() {
+/**
+ * @ngdoc directive
+ * @name solSlideableToggle
+ *
+ * @description
+ * Toggles the state of slideable element.
+ *
+ * @element ANY
+ * @see solSlideable
+ *
+ * @param {boolean} element Name of element to toggle expanded status.
+ */
+angular.module("solDecorator").directive('solSlideableToggle', function () {
     return {
         restrict: 'A',
         scope: false,
-        link: function(scope, element, attrs) {
+        link: function (scope, element, attrs) {
             var target = document.getElementById(attrs.solSlideableToggle);
             var content = target.querySelector('.sol-slideable-content');
-            attrs.expanded = (target.getAttribute("expanded") == "true");
+            attrs.expanded = (target.getAttribute("expanded") === "true");
 
             // Watch for inner changes and update parent
             scope.$watch(
-                function() { return content.offsetHeight; },
-                function(newValue, oldValue) {
+                function () {
+                    return content.offsetHeight;
+                },
+                function (newValue, oldValue) {
                     if (newValue !== oldValue) {
-                        if(attrs.expanded) {
+                        if (attrs.expanded) {
                             target.style.height = newValue + 'px';
                             content.style.transform = 'translate3d(0, 0%, 0)';
                         } else {
@@ -155,17 +249,17 @@ angular.module('solDecorator').directive('solSlideableToggle', function() {
                 true);
 
             // Bind click method to toggle view
-            element.bind('click', function() {
+            element.bind('click', function () {
                 var height = content.clientHeight;
 
                 if (!target.style.height) {
                     target.style.height = height + 'px';
 
-                    // TODO Why does target.clientHeight have to be touched again to ensure height takes affect on first call?!?!
+                    // TODO Why does target.clientHeight have to be accessed again for height to take affect on call?
                     target.clientHeight = target.clientHeight;
                 }
 
-                if(!attrs.expanded) {
+                if (!attrs.expanded) {
                     target.style.height = height + 'px';
                     content.style.transform = 'translate3d(0, 0%, 0)';
                 } else {
@@ -178,41 +272,59 @@ angular.module('solDecorator').directive('solSlideableToggle', function() {
     };
 });
 
-angular.module('solDecorator').directive("solFlipper", ['$window', function($window) {
+/**
+ * @ngdoc directive
+ * @name solFlipper
+ *
+ * @description
+ * Performs 3D Flip/Rotate animation.
+ *
+ * @element ANY
+ *
+ * @param {boolean} element Name of element to toggle expanded status.
+ */
+angular.module("solDecorator").directive("solFlipper", ['$window', function ($window) {
     // Inject animation CSS into document
     var cssString =
-    '<style>' +
-    '.sol-flipper {' +
-    '    overflow: hidden;' +
-    '}' +
-    '.sol-flip-panel {' +
-    '    position: absolute;' +
-    '    -webkit-backface-visibility: hidden;' +
-    '    backface-visibility: hidden;' +
-    '    transition: -webkit-transform .5s;' +
-    '    transition: transform .5s;' +
-    '    -webkit-transform: perspective(1000px) rotateY(0deg);' +
-    '    transform: perspective(1000px) rotateY(0deg);' +
-    '}' +
-    '.sol-flip-left {' +
-    '    -webkit-transform:  perspective(1000px) rotateY(-180deg);' +
-    '    transform:  perspective(1000px) rotateY(-180deg);' +
-    '}' +
-    '.sol-flip-right {' +
-    '    -webkit-transform:  perspective(1000px) rotateY(180deg);' +
-    '    transform:  perspective(1000px) rotateY(180deg);' +
-    '}' +
-    '</style>';
+        '<style>' +
+        '.sol-flipper {' +
+        '    overflow: hidden;' +
+        '}' +
+        '.sol-flip-panel {' +
+        '    position: absolute;' +
+        '    -webkit-backface-visibility: hidden;' +
+        '    backface-visibility: hidden;' +
+        '    transition: -webkit-transform .5s;' +
+        '    transition: transform .5s;' +
+        '    -webkit-transform: perspective(1000px) rotateY(0deg);' +
+        '    transform: perspective(1000px) rotateY(0deg);' +
+        '}' +
+        '.sol-flip-left {' +
+        '    -webkit-transform:  perspective(1000px) rotateY(-180deg);' +
+        '    transform:  perspective(1000px) rotateY(-180deg);' +
+        '}' +
+        '.sol-flip-right {' +
+        '    -webkit-transform:  perspective(1000px) rotateY(180deg);' +
+        '    transform:  perspective(1000px) rotateY(180deg);' +
+        '}' +
+        '</style>';
     document.head.insertAdjacentHTML("beforeend", cssString);
 
+    /**
+     * Applies width and height values to element's style sheet.
+     *
+     * @param {*} element HTML element to resize.
+     * @param {number} width Horizontal size of element in pixels.
+     * @param {number} height Vertical size of element in pixels.
+     */
     function setDimensions(element, width, height) {
         element.style.width = width;
         element.style.height = height;
     }
 
     return {
-        restrict : "E",
-        controller: function($scope, $element, $attrs) {
+        restrict: "E",
+        controller: function ($scope, $element, $attrs) {
             var self = this;
 
             self.width = 0;
@@ -221,18 +333,32 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
             self.sides = [];
             self.position = 0;
 
-            $scope.getController = function() {
+            /**
+             * Provides to controller to external caller.
+             *
+             * @returns {solFlipper}
+             */
+            $scope.getController = function () {
                 return self;
             };
 
-            // Watch for initialization after children added
-            $scope.$watch(function() { return self.sides.length; }, function(newValue, oldValue) {
+            /**
+             * Watches for new children and initializations element on changes.
+             */
+            $scope.$watch(function () {
+                return self.sides.length;
+            }, function (newValue, oldValue) {
                 if (oldValue !== newValue) {
                     self.init();
                 }
             });
 
-            self.init = function(count) {
+            /**
+             * Applies styles and callbacks to child elements.
+             *
+             * @param {number} count Total amount of child elements that can be viewed on rotation.
+             */
+            self.init = function (count) {
                 if (!count) {
                     count = self.sides.length;
                 }
@@ -252,11 +378,9 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
                     }*/
 
                     // Currently: Default to 2 sides
-                    var newArray = [self.sides[0], self.sides[0]];
-                    self.sides = newArray;
+                    self.sides = [self.sides[0], self.sides[0]];
                     self.init();
-                    return;
-                } else if (count == 2) {
+                } else if (count === 2) {
                     // Two sides found, alternate between the 2
                     setDimensions(self.sides[0][0], self.width, self.height);
                     setDimensions(self.sides[1][0], self.width, self.height);
@@ -266,12 +390,18 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
 
                     self.sides[0].on("click", showNext);
                     self.sides[1].on("click", showPrevious);
-                } else if (count == 1) {
+                } else if (count === 1) {
                     // 1 side found, do not alternate but apply dimensions
                     setDimensions(self.sides[0][0], self.width, self.height);
                 }
             };
 
+            /**
+             * Finds the next view to display, returning to first position after last.
+             *
+             * @param {number} current Index of the visible side.
+             * @returns {number} Index of the next visible side.
+             */
             function getNextSide(current) {
                 var position = current;
                 position++;
@@ -283,6 +413,12 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
                 return position;
             }
 
+            /**
+             * Finds the previous view to display, returning to last position after first.
+             *
+             * @param {number} current Index of the visible side.
+             * @returns {number} Index of the previously visible side.
+             */
             function getPreviousSide(current) {
                 var position = current;
                 position--;
@@ -294,6 +430,11 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
                 return position;
             }
 
+            /**
+             * Performs flip animation from current view to a specific index.
+             *
+             * @param {number} index Index of the final view to display.
+             */
             function showSide(index) {
                 if (self.disabled) {
                     return;
@@ -301,7 +442,7 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
 
                 var next = getNextSide(index);
 
-                for (var i = 0; i < self.sides.length; i ++) {
+                for (var i = 0; i < self.sides.length; i++) {
                     //self.sides[i].removeClass("sol-flip-right");
                     self.sides[i].removeClass("sol-flip-left");
                 }
@@ -311,7 +452,10 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
                 self.position = next;
             }
 
-            function showNext(event) {
+            /**
+             * Performs flip animation between the current view and the next adjacent view.
+             */
+            function showNext() {
                 if (self.disabled) {
                     return;
                 }
@@ -319,7 +463,7 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
                 var current = self.position;
                 var next = getNextSide(current);
 
-                for (var i = 0; i < self.sides.length; i ++) {
+                for (var i = 0; i < self.sides.length; i++) {
                     self.sides[i].removeClass("sol-flip-right");
                 }
                 self.sides[next].addClass("sol-flip-left");
@@ -327,6 +471,9 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
                 self.position = next;
             }
 
+            /**
+             * Performs flip animation between the current view and the previous adjacent view.
+             */
             function showPrevious(event) {
                 if (self.disabled) {
                     return;
@@ -334,7 +481,7 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
 
                 var previous = getPreviousSide(self.position);
 
-                for (var i = 0; i < self.sides.length; i ++) {
+                for (var i = 0; i < self.sides.length; i++) {
                     self.sides[i].removeClass("sol-flip-left");
                 }
                 self.sides[previous].addClass("sol-flip-right");
@@ -342,9 +489,16 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
                 self.position = previous;
             }
         },
-        link: function(scope, element, attrs, ctrl) {
-            element.addClass("sol-flipper");
 
+        link: function (scope, element, attrs, ctrl) {
+            /**
+             * Applies the HTML flipper class to child elements to allow animation.
+             *
+             * @param {number} flipWidth X-Axis perspective adjustment in pixels or percentage.
+             * @param {number} flipHeight Y-Axis perspective adjustment in pixels or percentage.
+             * @param {number} ratio Fractional value representing height to width of element.
+             */
+            element.addClass("sol-flipper");
             var percent;
             var maxWidth = $window.innerWidth;
             var maxHeight = $window.innerHeight;
@@ -406,11 +560,22 @@ angular.module('solDecorator').directive("solFlipper", ['$window', function($win
     };
 }]);
 
-angular.module('solDecorator').directive("solFlipPanel", function() {
+/**
+ * @ngdoc directive
+ * @name solFlipPanel
+ *
+ * @description
+ * Allows element to be animated as part of a solFlipper.
+ *
+ * @element Children of solFlipper
+ * @see solFlipper
+ *
+ */
+angular.module("solDecorator").directive("solFlipPanel", function () {
     return {
-        restrict : "E",
-        require : "^solFlipper",
-        link: function(scope, element, attrs, flipperCtrl) {
+        restrict: "E",
+        require: "^solFlipper",
+        link: function (scope, element, attrs, flipperCtrl) {
             element.addClass("sol-flip-panel");
             flipperCtrl.sides.unshift(element);
         }

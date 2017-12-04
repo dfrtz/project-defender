@@ -1,12 +1,37 @@
-var Solari = (function(parent) {
-    // Submodules
+/**
+ * @file A library consisting of functions which are called by users and submodules. Basic utilities and general
+ * purpose processing should be declared here, and defined in HTML before any other submodules.
+ *
+ * @summary Base library containing generic and convenience methods.
+ *
+ * @author David Fritz
+ * @version 1.0.0
+ *
+ * @copyright 2015-2017 David Fritz
+ * @license MIT
+ */
+var Solari = (function (parent) {
     var Utils = parent.utils = parent.utils || {};
 
-    // Private functions
-    function range(n) {
-        return new Array(n);
+    /**
+     * Creates sequential integer array of specified size.
+     *
+     * @param {number} count The length of the array created.
+     * @returns {number[]} Array of integer values starting with 0.
+     */
+    function range(count) {
+        return Array.apply(null, Array(count)).map(function (current, index) {
+            return index;
+        })
     }
 
+    /**
+     * Sorts an array of objects by specified key.
+     *
+     * @param {Array} data Array of objects.
+     * @param {string} keyValue The key from each object to sort by.
+     * @returns {Array} Original Array sorted.
+     */
     function sortArray(data, keyValue) {
         return data.sort(function (a, b) {
             var x = a[keyValue];
@@ -15,16 +40,30 @@ var Solari = (function(parent) {
         });
     }
 
+    /**
+     * Truncates arguments from start to specified index.
+     *
+     * @param {number} start First index to save in new array.
+     * @param {IArguments} oldArgs Array of argument objects.
+     * @returns {Array} Array containing elements from start index to end of passed arguments.
+     */
     function varArgs(start, oldArgs) {
-      var args = [];
+        var args = [];
 
-      for (var i = start; i < oldArgs.length; i++) {
-          args.push(oldArgs[i]);
-      }
+        for (var i = start; i < oldArgs.length; i++) {
+            args.push(oldArgs[i]);
+        }
 
-      return args;
+        return args;
     }
 
+    /**
+     * Creates a string with leading zeros up to a specified length.
+     *
+     * @param {*} value An object which can be represented as a string.
+     * @param {number} length Pad zeros up to this amount.
+     * @returns {string} New string with leading zeros if smaller than length, or unmodified string if over length.
+     */
     function padZeros(value, length) {
         var string = String(value);
         while (string.length < length) {
@@ -33,33 +72,50 @@ var Solari = (function(parent) {
         return string;
     }
 
-    function formatString(string, varargs) {
-        // Varargs is only included in declaration for readability
-        varargs = varArgs(1, arguments);
+    /**
+     * Formats a string containing positional values with passed arguments.
+     *
+     * @param {string} string Format string with insertion placeholders as {} and optional indexes.
+     * @param {IArguments} args Unlimited array of arguments to format into string placeholders.
+     */
+    function formatString(string, args) {
+        var varargs = varArgs(1, arguments);
 
-        return string.replace(/{(\d+)}/g, function(match, number) {
-            return typeof varargs[number] != 'undefined' ? varargs[number] : match;
+        return string.replace(/{(\d+)}/g, function (match, number) {
+            return typeof varargs[number] !== 'undefined' ? varargs[number] : match;
         });
     }
 
-    function runAsyncTask(data, objectUrl, onFinish) {
-        var worker = new Worker(objectUrl);
+    /**
+     * Creates an asynchronous worker which to run javascript against an object and send to callback method.
+     *
+     * @param {*} data Object to pass to Async Worker for processing.
+     * @param {string} url Javascript URL run by Async Worker.
+     * @param {function} onFinish Callback to pass returned data.
+     */
+    function runAsyncTask(data, url, onFinish) {
+        var worker = new Worker(url);
         worker.onmessage = onFinish;
         worker.postMessage(data);
     }
 
-    function buildAsyncBlob(onmessage, varargs) {
-        // Varargs is only included in declaration for readability
-        varargs = varArgs(1, arguments);
+    /**
+     * Converts a set of javascript methods into a file-like object which can be referenced by async Workers.
+     *
+     * @param {function} onMessage Primary function which will be used by Web Worker to process messaging queue
+     * @param {function[]} functions External functions to append as local functions in javascript Blob.
+     * @returns {Blob} File-like javascript object containing all passed methods
+     */
+    function buildAsyncBlob(onMessage, functions) {
+        functions = varArgs(1, arguments);
 
-        var body = "onmessage = " + onmessage.toString() + ";\n";
-
-        for (var i = 0; i < varargs.length; i++) {
-            var arg = varargs[i];
+        var body = "onmessage = " + onMessage.toString() + ";\n";
+        for (var i = 0; i < functions.length; i++) {
+            var arg = functions[i];
 
             if (isString(arg)) {
                 body += arg;
-            } else if (arg !== undefined){
+            } else if (arg !== undefined) {
                 body += arg.toString() + ";\n";
             }
         }
@@ -67,51 +123,69 @@ var Solari = (function(parent) {
         return new Blob([body], {type: "text/javascript"});
     }
 
+    /**
+     * Convenience method which checks if object is a string.
+     *
+     * @param {*} value Object to check type.
+     * @returns {boolean} True if value is a string, False otherwise.
+     */
     function isString(value) {
         return typeof value === 'string';
     }
 
+    /**
+     * A Class to split work between group of Asynchronous Workers.
+     *
+     * A configuration should be passed to initialize the pool, however it is not required.
+     *
+     * @param {object} config Initialization options for workers.
+     * @param {(number|undefined)} config.threads The number of maximum number of workers.
+     * @param {(boolean|undefined)} config.useCache Enable workers to operate on static cache.
+     * @param {(object|undefined)} config.cache Static cached data.
+     * @param {(number|undefined)} config.initInterval How often to check if a worker is initializing before processing.
+     * @param {(function[]|undefined)} config.scripts Array of methods available to workers.
+     * @param {(function|undefined)} config.callback Method for workers to call with event data.
+     * @class
+     */
     function WorkerPool(config) {
-        // Example config:
-        /*{
-            threads: 10,
-            useCache: true,
-            cache: "Random Data",
-            initializationInterval: 100,
-            scripts: [function(event) {self.postMessage(event.data);}]
-        }*/
-
         this.workers = [];
         this.lastWorker = 0;
         this.maxWorkers = config.threads || 2;
         this.workersInitializing = false;
-        this.callback = config.callback || function () {};
+        this.callback = config.callback || function () {
+        };
 
         this.cacheEnabled = config.useCache || false;
         this.cacheData = config.cache || undefined;
         this.cacheInitializing = false;
 
         this.asyncObjectUrl = undefined;
-        this.initCheckInterval = config.initializationInterval || 100;
+        this.initInterval = config.initInterval || 100;
 
         if (config.scripts !== undefined && config.scripts.length > 0) {
-            setScripts(config.scripts);
+            this.setScripts(config.scripts);
         }
     }
 
-    WorkerPool.prototype.setScripts = function() {
+    /**
+     * Adds scripts which will be available for access by all workers.
+     *
+     * @param {function[]} args External function to be translated for use by workers.
+     */
+    WorkerPool.prototype.setScripts = function (args) {
+        var self = this;
+
         if (this.asyncObjectUrl !== null) {
             window.URL.revokeObjectURL(this.asyncObjectUrl);
         }
         var scripts = Array.from(arguments);
 
-        var onmessage = function(event) {
+        var onmessage = function (event) {
             var cmd = event.data.cmd;
             if (cmd === "initCache") {
-                initCache(event.data.cache);
-                return;
+                self.initCache(event.data.cache);
             } else if (cmd === 'user') {
-                run(event.data.args);
+                self.run(event.data.args);
             }
         };
 
@@ -121,24 +195,31 @@ var Solari = (function(parent) {
         this.initWorkers();
     };
 
-    WorkerPool.prototype.setCallback = function(callback) {
+    /**
+     * Sets the method for workers to send event data.
+     *
+     * @param {function} callback Where to send events from workers.
+     */
+    WorkerPool.prototype.setCallback = function (callback) {
         var self = this;
 
-        var callbackWrapper = function(event) {
+        self.callback = function (event) {
             self.onCallback(event);
 
             if (event.data.cmdResult !== 'initCache') {
                 callback(event);
             }
         };
-        self.callback = callbackWrapper;
 
         for (var i = 0; i < self.workers.length; i++) {
             self.workers[i].onmessage = self.callback;
         }
     };
 
-    WorkerPool.prototype.initWorkers = function() {
+    /**
+     * Fills worker pool with new Workers allowed to accept incoming tasks.
+     */
+    WorkerPool.prototype.initWorkers = function () {
         var self = this;
 
         if (self.workersInitializing) {
@@ -159,33 +240,39 @@ var Solari = (function(parent) {
         self.workersInitializing = false;
     };
 
-    WorkerPool.prototype.initCache = function(cache) {
+    /**
+     * Adds static cache to pool for new workers, and sends cache to all existing workers.
+     *
+     * @param {*} cache Data object to save in pool and pass to all workers.
+     */
+    WorkerPool.prototype.initCache = function (cache) {
         var self = this;
 
         if (self.cacheInitializing) {
             //TODO implement way for parent async tasks to be notified before starting work
-            //return;
-        }
-
-        if (cache !== undefined) {
-            self.cacheData = cache;
         }
 
         self.cacheInitializing = true;
+        self.cacheData = cache;
         for (var i = 0; i < self.maxWorkers; i++) {
             self.workers[i].postMessage({cmd: 'initCache', cache: self.cacheData});
         }
         self.cacheInitializing = false;
     };
 
-    WorkerPool.prototype.run = function(args) {
+    /**
+     * Process arguments on next available worker in pool.
+     *
+     * @param {IArguments} args Arguments to send to worker for processing.
+     */
+    WorkerPool.prototype.run = function (args) {
         var self = this;
 
         if (self.workers.length <= 0) {
             if (self.workersInitializing) {
-                setTimeout(function() {
+                setTimeout(function () {
                     self.run(args);
-                }, self.initCheckInterval);
+                }, self.initInterval);
                 return;
             }
             self.initWorkers();
@@ -193,9 +280,9 @@ var Solari = (function(parent) {
 
         if (self.cacheEnabled && self.cacheData === undefined) {
             if (self.cacheInitializing) {
-                setTimeout(function() {
+                setTimeout(function () {
                     self.run(args);
-                }, self.initCheckInterval);
+                }, self.initInterval);
                 return;
             }
             self.initCache();
@@ -207,7 +294,12 @@ var Solari = (function(parent) {
         }
     };
 
-    WorkerPool.prototype.onCallback = function(event) {
+    /**
+     * Processes worker events to track progress in Pool.
+     *
+     * @param {object} event Event data sent from Worker.
+     */
+    WorkerPool.prototype.onCallback = function (event) {
         var cmd = event.data.cmdResult;
 
         //TODO track cache initialization counts

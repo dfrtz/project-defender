@@ -2,12 +2,12 @@
 """Primary Application"""
 
 import argparse
+import time
 
 from cli import HostShell
 from sol.http import *
 from sol.secure import AuthDatabase
 from sol.secure import AuthServerConfig
-import time
 
 MODE_BOTH = 0
 MODE_CLIENT = 1
@@ -71,7 +71,7 @@ class DefenderHandler(ApiHandler):
 
                 try:
                     config.mediad.send_cv_stream(self)
-                except BrokenPipeError as e:
+                except BrokenPipeError:
                     self.log_message('Broken Pipe')
             elif path.endswith('/audio'):
                 self.send_response(200)
@@ -86,7 +86,7 @@ class DefenderHandler(ApiHandler):
 
                 try:
                     config.mediad.send_pyaudio(self)
-                except BrokenPipeError as e:
+                except BrokenPipeError:
                     self.log_message('Broken Pipe')
         else:
             super(DefenderHandler, self).serve_file(path)
@@ -102,17 +102,24 @@ def get_date_time_string():
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Launch HTTP service and/or shell to control home defense devices.')
-    parser.add_argument('-w', '--web-root', help='Web server root folder. Default = ./html')
-    parser.add_argument('-l', '--log', help='Log operations to file')
-    parser.add_argument('-a', '--address', help='Web server bind address')
-    parser.add_argument('-p', '--port', help='Web server bind port', type=int)
+    parser.add_argument('-w', '--web-root',
+                        help='Web server root folder. Default = ./html')
+    parser.add_argument('-l', '--log',
+                        help='Log operations to file')
+    parser.add_argument('-a', '--address',
+                        help='Web server bind address')
+    parser.add_argument('-p', '--port', type=int,
+                        help='Web server bind port')
     parser.add_argument('-s', '--secure',
                         help='HTTPS certificate. Tip: To generate self signed, use: openssl req -newkey rsa:4096 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem')
-    parser.add_argument('-u', '--user-db', help='User Authentication SQL database.', default='user_auth.db')
-    parser.add_argument('-m', '--mode', help='Application run mode.', choices=['client', 'server', 'both'],
-                        default='both')
-    parser.add_argument('-c', '--config', help='Configuration file')
-    parser.add_argument('-d', '--debug', help='Enable debugging on launch', action='store_true')
+    parser.add_argument('-u', '--user-db', default='user_auth.db',
+                        help='User Authentication SQL database.')
+    parser.add_argument('-m', '--mode', default='both', choices=['client', 'server', 'both'],
+                        help='Application run mode.')
+    parser.add_argument('-c', '--config',
+                        help='Configuration file')
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='Enable debugging on launch')
 
     return parser.parse_args()
 
@@ -138,7 +145,6 @@ def main():
         http_config.log = args.log
     if args.debug:
         http_config.debug = args.debug
-
     if args.mode:
         http_config.mode = ARGS_MODES.get(args.mode, MODE_BOTH)
 
@@ -156,9 +162,6 @@ def main():
 
     authdb = AuthDatabase(os.path.abspath(args.user_db))
     http_config.db = authdb
-    shell.set_authdb(authdb)
-    shell.set_httpd(http_service)
-    shell.set_mediad(media_service)
 
     # Start services before entering user prompt mode
     http_service.start()
@@ -167,14 +170,14 @@ def main():
         media_config = media.MediaConfig(config.get('media', None))
         media_service = media.MediaService(media_config)
         http_config.mediad = media_service
-
-        if args.camera:
-            media_config.video.device = int(args.camera)
-
         media_service.start()
 
         # TODO debug
         # print(media.AudioStream.mk_wav_header())
+
+    shell.set_authdb(authdb)
+    shell.set_httpd(http_service)
+    shell.set_mediad(media_service)
     try:
         while shell.run_command(shell.prompt):
             pass
