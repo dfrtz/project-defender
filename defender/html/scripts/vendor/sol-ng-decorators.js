@@ -14,7 +14,7 @@
  * AngularJS based decoration module for modifying markup behavior.
  * @module solDecorator
  */
-angular.module("solDecorator", ['ngMaterial', 'ngAnimate', 'ngRoute', 'ngSanitize']);
+angular.module("solDecorator", ["ngMaterial", "ngAnimate", "ngRoute", "ngSanitize"]);
 
 /**
  * @ngdoc directive
@@ -27,11 +27,11 @@ angular.module("solDecorator", ['ngMaterial', 'ngAnimate', 'ngRoute', 'ngSanitiz
  *
  * @param {string} function Name of function to call.
  */
-angular.module("solDecorator").directive('solLongClick', function ($timeout) {
+angular.module("solDecorator").directive("solLongClick", function ($timeout) {
     return {
-        restrict: 'A',
+        restrict: "A",
         link: function ($scope, $elem, $attrs) {
-            $elem.bind('mousedown', function (event) {
+            $elem.bind("mousedown", function (event) {
                 $scope.longClick = true;
 
                 $timeout(function () {
@@ -43,7 +43,7 @@ angular.module("solDecorator").directive('solLongClick', function ($timeout) {
                 }, 500);
             });
 
-            $elem.bind('mouseup', function (event) {
+            $elem.bind("mouseup", function (event) {
                 $scope.longClick = false;
             });
         }
@@ -61,11 +61,11 @@ angular.module("solDecorator").directive('solLongClick', function ($timeout) {
  *
  * @param {string} function Name of function to call.
  */
-angular.module("solDecorator").directive('solLongPress', function longPress($timeout) {
+angular.module("solDecorator").directive("solLongPress", function longPress($timeout) {
     return {
-        restrict: 'A',
+        restrict: "A",
         link: function ($scope, $elem, $attrs) {
-            $elem.bind('touchstart', function (event) {
+            $elem.bind("touchstart", function (event) {
                 $scope.longPress = true;
 
                 $timeout(function () {
@@ -77,7 +77,7 @@ angular.module("solDecorator").directive('solLongPress', function longPress($tim
                 }, 500);
             });
 
-            $elem.bind('touchend', function (event) {
+            $elem.bind("touchend", function (event) {
                 $scope.longPress = false;
             });
         }
@@ -95,9 +95,9 @@ angular.module("solDecorator").directive('solLongPress', function longPress($tim
  *
  * @param {string} function Name of function to call.
  */
-angular.module("solDecorator").directive('solOnready', function ($parse) {
+angular.module("solDecorator").directive("solOnready", function ($parse) {
     return {
-        restrict: 'A',
+        restrict: "A",
         link: function (scope, elem, attrs) {
             elem.ready(function () {
                 scope.$apply(function () {
@@ -125,9 +125,9 @@ angular.module("solDecorator").directive("solScaleImage", [
     function () {
         return {
             link: function (scope, elm, attrs) {
-                attrs.$observe('solScaleImage', function (value) {
-                    elm.css('width', value + 'px');
-                    elm.css('height', value + 'px');
+                attrs.$observe("solScaleImage", function (value) {
+                    elm.css("width", value + "px");
+                    elm.css("height", value + "px");
                 });
             }
         };
@@ -149,8 +149,8 @@ angular.module("solDecorator").directive("solBackgroudSrc", [
     function () {
         return {
             link: function (scope, element, attrs) {
-                attrs.$observe('solBackgroudSrc', function (value) {
-                    element.css('background', 'url(' + value + ') center / cover');
+                attrs.$observe("solBackgroudSrc", function (value) {
+                    element.css("background", "url(" + value + ") center / cover");
                 });
             }
         };
@@ -170,38 +170,38 @@ angular.module("solDecorator").directive("solBackgroudSrc", [
  */
 angular.module("solDecorator").directive("solSlideable", function () {
     return {
-        restrict: 'C',
+        restrict: "C",
 
         compile: function (element, attr) {
             var contents = element.html();
-            element.html('<div class="sol-slideable-content" style="padding-bottom: 5px !important">' + contents + '</div>');
+            element.html("<div class='sol-slideable-content' style='padding-bottom: 5px !important'>" + contents + "</div>");
 
             return function postLink(scope, element, attrs) {
                 // Set default attributes
                 attrs.expanded = attrs.expanded === "true";
-                attrs.duration = (!attrs.duration) ? '0.5s' : attrs.duration;
-                attrs.easing = (!attrs.easing) ? 'ease' : attrs.easing;
+                attrs.duration = (!attrs.duration) ? "0.5s" : attrs.duration;
+                attrs.easing = (!attrs.easing) ? "ease" : attrs.easing;
 
                 // Check if starting expanded
                 if (!attrs.expanded) {
                     element.css({
-                        'height': '0px'
+                        "height": "0px"
                     });
                 }
 
                 // Apply size animation to parent so surrounding views move with child
                 element.css({
-                    'overflow': 'hidden',
-                    'transitionProperty': 'height',
-                    'transitionDuration': attrs.duration,
-                    'transitionTimingFunction': attrs.easing
+                    "overflow": "hidden",
+                    "transitionProperty": "height",
+                    "transitionDuration": attrs.duration,
+                    "transitionTimingFunction": attrs.easing
                 });
 
                 // Apply transform animation to new child to simulate sliding
-                var content = element[0].querySelector('.sol-slideable-content');
+                var content = element[0].querySelector(".sol-slideable-content");
                 var contentStyle = content.style;
                 content.setAttribute("expanded", attrs.expanded);
-                contentStyle.transitionProperty = 'transform';
+                contentStyle.transitionProperty = "transform";
                 contentStyle.transitionDuration = attrs.duration;
                 contentStyle.transitionTimingFunction = attrs.easing;
             };
@@ -221,13 +221,13 @@ angular.module("solDecorator").directive("solSlideable", function () {
  *
  * @param {boolean} element Name of element to toggle expanded status.
  */
-angular.module("solDecorator").directive('solSlideableToggle', function () {
+angular.module("solDecorator").directive("solSlideableToggle", function () {
     return {
-        restrict: 'A',
+        restrict: "A",
         scope: false,
         link: function (scope, element, attrs) {
             var target = document.getElementById(attrs.solSlideableToggle);
-            var content = target.querySelector('.sol-slideable-content');
+            var content = target.querySelector(".sol-slideable-content");
             attrs.expanded = (target.getAttribute("expanded") === "true");
 
             // Watch for inner changes and update parent
@@ -238,33 +238,33 @@ angular.module("solDecorator").directive('solSlideableToggle', function () {
                 function (newValue, oldValue) {
                     if (newValue !== oldValue) {
                         if (attrs.expanded) {
-                            target.style.height = newValue + 'px';
-                            content.style.transform = 'translate3d(0, 0%, 0)';
+                            target.style.height = newValue + "px";
+                            content.style.transform = "translate3d(0, 0%, 0)";
                         } else {
-                            target.style.height = '0px';
-                            content.style.transform = 'translate3d(0, -100%, 0)';
+                            target.style.height = "0px";
+                            content.style.transform = "translate3d(0, -100%, 0)";
                         }
                     }
                 },
                 true);
 
             // Bind click method to toggle view
-            element.bind('click', function () {
+            element.bind("click", function () {
                 var height = content.clientHeight;
 
                 if (!target.style.height) {
-                    target.style.height = height + 'px';
+                    target.style.height = height + "px";
 
                     // TODO Why does target.clientHeight have to be accessed again for height to take affect on call?
                     target.clientHeight = target.clientHeight;
                 }
 
                 if (!attrs.expanded) {
-                    target.style.height = height + 'px';
-                    content.style.transform = 'translate3d(0, 0%, 0)';
+                    target.style.height = height + "px";
+                    content.style.transform = "translate3d(0, 0%, 0)";
                 } else {
-                    target.style.height = '0px';
-                    content.style.transform = 'translate3d(0, -100%, 0)';
+                    target.style.height = "0px";
+                    content.style.transform = "translate3d(0, -100%, 0)";
                 }
                 attrs.expanded = !attrs.expanded;
             });
@@ -283,31 +283,31 @@ angular.module("solDecorator").directive('solSlideableToggle', function () {
  *
  * @param {boolean} element Name of element to toggle expanded status.
  */
-angular.module("solDecorator").directive("solFlipper", ['$window', function ($window) {
+angular.module("solDecorator").directive("solFlipper", ["$window", function ($window) {
     // Inject animation CSS into document
     var cssString =
-        '<style>' +
-        '.sol-flipper {' +
-        '    overflow: hidden;' +
-        '}' +
-        '.sol-flip-panel {' +
-        '    position: absolute;' +
-        '    -webkit-backface-visibility: hidden;' +
-        '    backface-visibility: hidden;' +
-        '    transition: -webkit-transform .5s;' +
-        '    transition: transform .5s;' +
-        '    -webkit-transform: perspective(1000px) rotateY(0deg);' +
-        '    transform: perspective(1000px) rotateY(0deg);' +
-        '}' +
-        '.sol-flip-left {' +
-        '    -webkit-transform:  perspective(1000px) rotateY(-180deg);' +
-        '    transform:  perspective(1000px) rotateY(-180deg);' +
-        '}' +
-        '.sol-flip-right {' +
-        '    -webkit-transform:  perspective(1000px) rotateY(180deg);' +
-        '    transform:  perspective(1000px) rotateY(180deg);' +
-        '}' +
-        '</style>';
+        "<style>" +
+        ".sol-flipper {" +
+        "    overflow: hidden;" +
+        "}" +
+        ".sol-flip-panel {" +
+        "    position: absolute;" +
+        "    -webkit-backface-visibility: hidden;" +
+        "    backface-visibility: hidden;" +
+        "    transition: -webkit-transform .5s;" +
+        "    transition: transform .5s;" +
+        "    -webkit-transform: perspective(1000px) rotateY(0deg);" +
+        "    transform: perspective(1000px) rotateY(0deg);" +
+        "}" +
+        ".sol-flip-left {" +
+        "    -webkit-transform:  perspective(1000px) rotateY(-180deg);" +
+        "    transform:  perspective(1000px) rotateY(-180deg);" +
+        "}" +
+        ".sol-flip-right {" +
+        "    -webkit-transform:  perspective(1000px) rotateY(180deg);" +
+        "    transform:  perspective(1000px) rotateY(180deg);" +
+        "}" +
+        "</style>";
     document.head.insertAdjacentHTML("beforeend", cssString);
 
     /**
@@ -525,7 +525,7 @@ angular.module("solDecorator").directive("solFlipper", ['$window', function ($wi
 
             // Update sizes if ratio specified
             if (ratio !== undefined) {
-                var ratioValues = ratio.split('/');
+                var ratioValues = ratio.split("/");
                 ratio = parseFloat(ratioValues[0]) / parseFloat(ratioValues[1]);
 
                 var maxW = width;
@@ -553,9 +553,9 @@ angular.module("solDecorator").directive("solFlipper", ['$window', function ($wi
             }
 
             // Save controller dimensions and update main element
-            ctrl.width = width + 'px';
-            ctrl.height = height + 'px';
-            setDimensions(element[0], width + 'px', height + 'px');
+            ctrl.width = width + "px";
+            ctrl.height = height + "px";
+            setDimensions(element[0], width + "px", height + "px");
         }
     };
 }]);
