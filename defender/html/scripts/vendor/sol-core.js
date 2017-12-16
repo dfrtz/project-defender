@@ -82,7 +82,7 @@ var Solari = (function (parent) {
         var varargs = varArgs(1, arguments);
 
         return string.replace(/{(\d+)}/g, function (match, number) {
-            return typeof varargs[number] !== 'undefined' ? varargs[number] : match;
+            return typeof varargs[number] !== "undefined" ? varargs[number] : match;
         });
     }
 
@@ -130,7 +130,7 @@ var Solari = (function (parent) {
      * @returns {boolean} True if value is a string, False otherwise.
      */
     function isString(value) {
-        return typeof value === 'string';
+        return typeof value === "string";
     }
 
     /**
@@ -184,7 +184,7 @@ var Solari = (function (parent) {
             var cmd = event.data.cmd;
             if (cmd === "initCache") {
                 self.initCache(event.data.cache);
-            } else if (cmd === 'user') {
+            } else if (cmd === "user") {
                 self.run(event.data.args);
             }
         };
@@ -206,7 +206,7 @@ var Solari = (function (parent) {
         self.callback = function (event) {
             self.onCallback(event);
 
-            if (event.data.cmdResult !== 'initCache') {
+            if (event.data.cmdResult !== "initCache") {
                 callback(event);
             }
         };
@@ -255,7 +255,7 @@ var Solari = (function (parent) {
         self.cacheInitializing = true;
         self.cacheData = cache;
         for (var i = 0; i < self.maxWorkers; i++) {
-            self.workers[i].postMessage({cmd: 'initCache', cache: self.cacheData});
+            self.workers[i].postMessage({cmd: "initCache", cache: self.cacheData});
         }
         self.cacheInitializing = false;
     };
@@ -290,7 +290,7 @@ var Solari = (function (parent) {
             var workerId = self.lastWorker;
             self.lastWorker++;
             self.lastWorker = self.lastWorker >= self.workers.length ? 0 : self.lastWorker;
-            self.workers[workerId].postMessage({cmd: 'user', args: args});
+            self.workers[workerId].postMessage({cmd: "user", args: args});
         }
     };
 

@@ -24,7 +24,7 @@ var Solari = (function (parent) {
      * @returns {string} Name of file without extension.
      */
     function getName(filename) {
-        return filename.substring(0, filename.lastIndexOf('.'));
+        return filename.substring(0, filename.lastIndexOf("."));
     }
 
     /**
@@ -34,7 +34,7 @@ var Solari = (function (parent) {
      * @returns {string} Extension of file without name.
      */
     function getExtension(filename) {
-        return filename.split('.').pop();
+        return filename.split(".").pop();
     }
 
     /**
@@ -45,15 +45,15 @@ var Solari = (function (parent) {
      */
     function saveObjectURL(fileName, objectURL) {
         // Create new, temporary link
-        var link = document.createElement('a');
+        var link = document.createElement("a");
 
-        link.setAttribute('download', fileName);
+        link.setAttribute("download", fileName);
         link.href = objectURL;
 
         // Add temporary link to body, simulate click, and remove link
         document.body.appendChild(link);
         window.requestAnimationFrame(function () {
-            var event = new MouseEvent('click');
+            var event = new MouseEvent("click");
             link.dispatchEvent(event);
             document.body.removeChild(link);
         });
@@ -83,7 +83,7 @@ var Solari = (function (parent) {
      * @param {function} callback Where to send processed data after read.
      */
     function readAs(type, file, callback) {
-        if (typeof window.FileReader !== 'function') {
+        if (typeof window.FileReader !== "function") {
             console.log("File API is not supported on this browser. Please use a different browser.");
             return;
         }

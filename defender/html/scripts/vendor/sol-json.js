@@ -36,7 +36,7 @@ var Solari = (function (parent) {
      * @param {function} reviver Describes how objects are transformed before being returned.
      */
     function readFile(file, callback, reviver) {
-        if (typeof window.FileReader !== 'function') {
+        if (typeof window.FileReader !== "function") {
             console.log("File API is not supported on this browser. Please use a different browser.");
             return;
         }
@@ -70,7 +70,7 @@ var Solari = (function (parent) {
      * @returns {object} Object URL.
      */
     function makeObjectURL(object) {
-        var data = new Blob([JSON.stringify(object, undefined, 2)], {type: 'text/plain'});
+        var data = new Blob([JSON.stringify(object, undefined, 2)], {type: "text/plain"});
 
         // Revoke any existing file/blob access to prevent leaks
         if (objectURL !== null) {
@@ -90,7 +90,7 @@ var Solari = (function (parent) {
         for (var keyValue in object) {
             // Do not touch primitive values
 
-            if (typeof object[keyValue] === 'number' || typeof object[keyValue] === 'boolean') {
+            if (typeof object[keyValue] === "number" || typeof object[keyValue] === "boolean") {
                 continue;
             }
 
@@ -103,7 +103,7 @@ var Solari = (function (parent) {
                     // Loop over array and clean objects
                     for (var item = object[keyValue].length - 1; item >= 0; item--) {
                         // Do not touch primitive values
-                        if (typeof object[keyValue][item] === 'number' || typeof object[keyValue][item] === 'boolean') {
+                        if (typeof object[keyValue][item] === "number" || typeof object[keyValue][item] === "boolean") {
                             continue;
                         }
 
@@ -129,7 +129,7 @@ var Solari = (function (parent) {
                     // Empty array, remove
                     delete object[keyValue];
                 }
-            } else if (typeof object[keyValue] === 'object') {
+            } else if (typeof object[keyValue] === "object") {
                 clean(object[keyValue]);
             }
         }
