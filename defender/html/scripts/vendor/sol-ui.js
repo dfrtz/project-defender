@@ -50,9 +50,9 @@ var Solari = (function (parent) {
     }
 
     /**
-     * Converts hexidecimal color string into rgba formatted integer string.
+     * Converts hexadecimal color string into rgba formatted integer string.
      *
-     * @param {string} hex Text representing a hexidecimal (0-9A-F) color.
+     * @param {string} hex Text representing a hexadecimal (0-9A-F) color.
      * @returns {string} String representing colors as 'rgba(red, green, blue, alpha)'.
      */
     function hexToRGBA(hex) {
@@ -63,10 +63,10 @@ var Solari = (function (parent) {
         hex = hex.replace("#", "");
 
         if (hex.length === 8) {
-            a = parseInt(hex.substring(0, 2), 16);
-            r = parseInt(hex.substring(2, 4), 16);
-            g = parseInt(hex.substring(4, 6), 16);
-            b = parseInt(hex.substring(6, 8), 16);
+            var a = parseInt(hex.substring(0, 2), 16);
+            var r = parseInt(hex.substring(2, 4), 16);
+            var g = parseInt(hex.substring(4, 6), 16);
+            var b = parseInt(hex.substring(6, 8), 16);
         } else if (hex.length === 4) {
             a = parseInt(hex.substring(0, 1), 16);
             r = parseInt(hex.substring(1, 2), 16);
@@ -80,13 +80,13 @@ var Solari = (function (parent) {
     }
 
     /**
-     * Converts four values representing red, green, blue, and alpha into hexidecimal string.
+     * Converts four values representing red, green, blue, and alpha into hexadecimal string.
      *
      * @param {string|number} r Red value from 0 to 255
      * @param {string|number} g Green value from 0 to 255
      * @param {string|number} b Blue value from 0 to 255
      * @param {string|number} a Alpha value from 0 to 255
-     * @returns {string} String representing color as hexidecimal format.
+     * @returns {string} String representing color as hexadecimal format.
      */
     function rgbaToHex(r, g, b, a) {
         a = Solari.utils.padZeros(parseInt(a).toString(16), 2);
@@ -98,10 +98,10 @@ var Solari = (function (parent) {
     }
 
     /**
-     * Converts rgba formatted csv values into hexidecimal.
+     * Converts rgba formatted csv values into hexadecimal.
      *
      * @param {string} rgba Color string formatted as 'rgba(0-255, 0-255, 0-255, 0-1.0)'.
-     * @returns {string} String reprenting color in hexidecimal format.
+     * @returns {string} String reprenting color in hexadecimal format.
      */
     function rgbaStringToHex(rgba) {
         if (rgba === undefined) {
@@ -113,10 +113,10 @@ var Solari = (function (parent) {
         rgba = rgba.replace(" ", "");
         rgba = rgba.split(",");
 
-        a = parseInt(parseFloat(rgba[3]) * 255) || 0;
-        r = parseInt(rgba[0]) || 0;
-        g = parseInt(rgba[1]) || 0;
-        b = parseInt(rgba[2]) || 0;
+        var a = parseInt(parseFloat(rgba[3]) * 255) || 0;
+        var r = parseInt(rgba[0]) || 0;
+        var g = parseInt(rgba[1]) || 0;
+        var b = parseInt(rgba[2]) || 0;
 
         return rgbaToHex(r, g, b, a);
     }
@@ -245,7 +245,7 @@ var Solari = (function (parent) {
      * @param {number} y Y-Axis center position.
      * @param {number} z Z-Axis center position.
      * @param {number} size Distance from center to edge of shape.
-     * @param {string} color Color formatted as RGBA or hexidecimal string.
+     * @param {string} color Color formatted as RGBA or hexadecimal string.
      * @param {number} shape Number representing shape. 0 = Circle, 1 = Square.
      * @param {number} id Unique numerical identifier to reference this object.
      * @class

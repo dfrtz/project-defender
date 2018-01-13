@@ -61,7 +61,7 @@ var Solari = (function (parent) {
     }
 
     /**
-     * Converts array of 8-bit values into 16-bit hexidecimal text.
+     * Converts array of 8-bit values into 16-bit hexadecimal text.
      *
      * @param {Array} bytes Array of 8-bit integers.
      * @returns {string} Text representation of 16-bit values.
