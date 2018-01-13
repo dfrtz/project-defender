@@ -2,6 +2,7 @@
 This guide was written and tested on Raspbian Stretch Lite (2017-08-16) and OpenCV 3.3.0, however the same
 steps (should) work in any Debian based environment with minimal to no modification. Other Linux distros will
 require medium to heavy modification of the commands such as installing dependencies. Your mileage may vary.
+##### Note: Improper use of 'dd' can overwrite any partition on your system. Do not proceed with any commands without absolute certainty they are targeting the correct partition.
 
 
 # Sections:
@@ -13,7 +14,6 @@ require medium to heavy modification of the commands such as installing dependen
 ##### VI. Setup OpenCV Development Environment
 ##### VII. Setup Defender Development Environment
 
-
 ### I. Download Raspberry Pi Debian (Raspbian) Image
 
 Find and download an image from Raspbian Official:
@@ -22,7 +22,7 @@ https://www.raspberrypi.org/downloads/
 
 ### II. Installing the Operating System
 
-#####Note: Improper use of 'dd' can overwrite any partition on your system. Do not proceed with any commands without absolute certainty they are targeting the correct partition.
+##### Note: Improper use of 'dd' can overwrite any partition on your system. Do not proceed with any commands without absolute certainty they are targeting the correct partition.
 
 1. List the current devices and their mount points:  
 `lsblk`
