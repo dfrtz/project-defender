@@ -1,14 +1,15 @@
 {
   "server": {
-    "html": "demodata/html",
-    "cert": "demodata/server.pem",
+    "html": "~/defender/html",
+    "cert": "~/defender/server.pem",
+    "key": "~/defender/key.pem",
     "address": "0.0.0.0",
     "port": 8080,
-    "log": "",
+    "log": "~/defender/defender_httpd.log",
     "mode": "both",
     "debug": false,
     "database": {
-      "user" : "demodata/user_ath.db"
+      "user" : "~/defender/user_ath.db"
     }
   },
   "media": {
@@ -23,6 +24,6 @@
       "channels": 1,
       "rate": 48000
     },
-    "log": "media.log"
+    "log": "~/defeender/defender_media.log"
   }
 }
