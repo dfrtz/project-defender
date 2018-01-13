@@ -178,3 +178,4 @@ class HostShell(shells.BaseShell):
             if entries:
                 print('User list:\n{}'.format(json.dumps(entries)))
                 return True
+        return True
