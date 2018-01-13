@@ -13,27 +13,29 @@ class AuthServer(ApiServer):
 
 
 class AuthServerConfig(ApiConfig):
-    def __init__(self):
-        super(AuthServerConfig, self).__init__()
+    def __init__(self, user_config=None):
+        super(AuthServerConfig, self).__init__(user_config)
         self.thread_handler = AuthServer
 
 
 class AuthDatabase(object):
-    SALT_LENGTH = 64
-    HASH_ITERATIONS = 128 * 1000
+    KEY_LENGTH = 128
+    SALT_LENGTH = 128
+    HASH_ITERATIONS = 64 * 1000
 
     def __init__(self, path):
-        self._salt_length = AuthDatabase.SALT_LENGTH
-        self._hash_iterations = AuthDatabase.HASH_ITERATIONS
+        self._dklen = AuthDatabase.KEY_LENGTH
+        self._salt_len = AuthDatabase.SALT_LENGTH
+        self._hash_iter = AuthDatabase.HASH_ITERATIONS
         self._authentication_table = AuthenticationTable(path)
         self._authentication_table_cache = {}
 
     def encrypt(self, msg, salt):
         return base64.b64encode(
-            hashlib.pbkdf2_hmac('sha256', msg.encode(), salt.encode(), self._hash_iterations)).decode('utf-8')
+            hashlib.pbkdf2_hmac('sha512', msg.encode(), salt.encode(), self._hash_iter, self._dklen)).decode('utf-8')
 
     def add_user(self, username, password, encrypted=False):
-        salt = base64.b64encode(os.urandom(self._salt_length)).decode('utf-8')
+        salt = base64.b64encode(os.urandom(self._salt_len)).decode('utf-8')
 
         if not encrypted:
             password = self.encrypt(password, salt)
