@@ -24,6 +24,6 @@
       "channels": 1,
       "rate": 48000
     },
-    "log": "~/defeender/defender_media.log"
+    "log": "~/defender/defender_media.log"
   }
 }
