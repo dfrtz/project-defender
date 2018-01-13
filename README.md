@@ -1,11 +1,55 @@
-OpenCV Overview:
+# Defender
+Defender is a Python and Javascript based Web Application/Rest API to manage streaming of audio and video from security cameras, and other devices, in a local network.
+Seecurity is currently achieved through the use of HTTPS certificates, and a salted User/Password database. For simplicity and greater compatibility with low end devices, video is streamed as MJPEG, and audio is streamed as WAV (meaning bandwidth usage is not optimized).
+Streams can be saved using separate applications with support for HTTP, such as FFMPEG, VLC, etc.
+
+Currently this application supports Video streaming through OpenCV:  
 http://opencv.org/
 
-How to run:
-1. Copy demo data to local folder:
-# cp -R .demodata ~/defender
+And audio through PyAudio:  
+https://pypi.python.org/pypi/PyAudio
 
-2. Start server with HTTPS and existing user database:
-# ./defender.py -s ~/defender/server.pem -u ~/defender/user_auth.db
+### How to run:
+1. Setup OpenCV and Python environment with:  
+[How to setup Raspberry Pi](howto_setup_rpi.md)
 
-For some reason HTTP traffic appears to fail loading page, until reason is determined an HTTPS certificate should always be used or API frontend.
+2. Clone/pull repository.
+
+3. Copy frontend demo data to local folder:  
+`cp -R demodata ~/defender`
+
+4. Update the configuration file with values to match your environment and capture devices' capabilities:  
+`vi ~/defender/config.json`
+
+5. Generate new custom HTTPS certificate:  
+`openssl req -newkey rsa:4096 -nodes -keyout ~/defender/key.pem -x509 -days 365 -out ~/defender/server.pem`
+
+5. If setup for 'virtualenv' per Step 1, ensure you are working on that project:  
+`workon opencv`
+
+6. Start server with:  
+`defender/defender.py -c ~/defender/config.json`
+
+7. Add a user and password to the database (or skip and use default:default):  
+`user add <new user name>`  
+If new user was added, remove default:  
+`user remove default`
+
+7. Attempt to load the video stream in a browser by going to:  
+`https://<hostname or ip>:<port>/video`
+
+- For some reason HTTP traffic appears to fail loading page/serving API calls, until reason is determined HTTPS should always be used.
+
+# Requirements
+- Python3
+- System with video and/or audio capture device
+
+# Recommendations
+- Raspberry Pi 3 or equivalent hardware
+- Webcam with builtin microphone. Tested on Logitech C210.
+
+# Future Enhancements
+- Support for controlling remote motorized devices, such as turret cameras, drones, etc.
+- Builtin A/V recording through application, instead of with 3rd party applications such as FFMPEG/VLC.
+- Possibly additional compression formats for A/V.
+- Implement API session keys option in combination with username/password.
