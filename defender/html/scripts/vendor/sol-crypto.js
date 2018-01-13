@@ -338,7 +338,7 @@ var Solari = (function (parent) {
             md5Worker.onmessage = onFinish;
             md5Worker.postMessage(data);
         } else {
-            // Create new worker for each call, maximum parallelization
+            // Create new worker for each call, maximum parallelism
             Solari.utils.async(data, md5AsyncObjectUrl, onFinish);
         }
     }
