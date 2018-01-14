@@ -176,6 +176,6 @@ class HostShell(shells.BaseShell):
             # TODO Allow username change
             entries = self._authdb.get_users()
             if entries:
-                print('User list:\n{}'.format(json.dumps(entries)))
+                print('User list:\n{}'.format('\n'.join([user['username'] for user in entries])))
                 return True
         return True
