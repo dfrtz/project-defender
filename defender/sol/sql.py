@@ -213,7 +213,7 @@ class SQLiteHelper(object):
         self.database_name = database_name
         self.database = None
 
-        self.__create(database_version)
+        self._create(database_version)
         self.open('mode=rw')
         self.upgrade_db(database_version)
         self.downgrade_db(database_version)
@@ -225,14 +225,17 @@ class SQLiteHelper(object):
     def close(self):
         self.database.close()
 
-    def __create(self, version):
-        path = os.path.abspath(self.database_name)
-        exists = Path(path).is_file()
+    def _create(self, version):
+        path = Path(self.database_name).expanduser().absolute()
+        exists = path.is_file()
 
         # DB must be created after checking path to prevent accidental creation
         self.database = SQLiteDatabase(path)
 
         if not exists:
+            parent = Path(path.parent)
+            if not parent.is_dir():
+                parent.mkdir(parents=True, exist_ok=True)
             self.database.create()
             self.open()
             self.database.set_version(version)
