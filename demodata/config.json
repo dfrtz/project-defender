@@ -9,7 +9,7 @@
     "mode": "both",
     "debug": false,
     "database": {
-      "user" : "~/defender/user_ath.db"
+      "user" : "~/defender/user_auth.db"
     }
   },
   "media": {
