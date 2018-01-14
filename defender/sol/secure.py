@@ -3,8 +3,8 @@ import hashlib
 import os
 
 from sol import sql
-from sol.http import ApiServer
 from sol.http import ApiConfig
+from sol.http import ApiServer
 
 
 class AuthServer(ApiServer):
@@ -66,7 +66,7 @@ class AuthDatabase(object):
     def get_users(self):
         entries = self._authentication_table.get(('*',))
         if entries:
-            return entries[0]
+            return entries
         else:
             return None
 

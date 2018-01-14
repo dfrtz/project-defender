@@ -14,15 +14,18 @@ from socketserver import ThreadingTCPServer
 
 
 class ApiConfig(object):
-    def __init__(self):
-        self.web_root = os.path.abspath('html')
-        self.log = 'httpd.log'
-        self.secure = 'server.pem'
-        self.host = '0.0.0.0'
-        self.port = 8080
+    def __init__(self, user_config=None):
+        if not user_config:
+            user_config = {}
+        self.web_root = os.path.abspath(os.path.expanduser(user_config.get('html', 'html')))
+        self.log = os.path.abspath(os.path.expanduser(user_config.get('log', 'httpd.log')))
+        self.secure = os.path.abspath(os.path.expanduser(user_config.get('cert', 'server.pem')))
+        self.key = os.path.abspath(os.path.expanduser(user_config.get('key', 'key.pem')))
+        self.host = user_config.get('address', '0.0.0.0')
+        self.port = user_config.get('port', 8080)
+        self.debug = user_config.get('debug', False)
         self.thread_handler = ApiServer
         self.request_handler = ApiHandler
-        self.debug = False
 
 
 class HttpService(object):
@@ -61,7 +64,6 @@ class HttpService(object):
     def start(self):
         if self._thread is None:
             self.log_message('HTTP service starting', True)
-
             self._thread = self.config.thread_handler(self.config, False)
 
             # Manually bind and activate to set socket reuse w/o overriding class
@@ -76,10 +78,10 @@ class HttpService(object):
                 if cert_file.is_file():
                     # TODO: Validate certificate
                     self.log_message('HTTP service loading SSL cert: {}'.format(self.config.secure), True)
-                    self._thread.socket = ssl.wrap_socket(self._thread.socket, certfile=self.config.secure,
-                                                          server_side=True, ssl_version=ssl.PROTOCOL_TLSv1_2)
+                    self._thread.socket = ssl.wrap_socket(self._thread.socket, keyfile=self.config.key,
+                                                          certfile=self.config.secure, server_side=True,
+                                                          ssl_version=ssl.PROTOCOL_TLSv1_2)
                     cert_loaded = True
-
             # Start HTTPD in new thread to prevent blocking user input
             threading.Thread(target=self._thread.serve_forever).start()
 
@@ -102,9 +104,7 @@ class HttpService(object):
 class ApiServer(ThreadingTCPServer):
     def __init__(self, config, bind_and_activate=True):
         super(ApiServer, self).__init__((config.host, config.port), config.request_handler, bind_and_activate)
-
         self.config = config
-
         self.users = {
             # Default user is default:default
             'default': {'password': 'default'}
@@ -112,11 +112,9 @@ class ApiServer(ThreadingTCPServer):
 
     def authenticate(self, user, password):
         authorized = False
-
         if user in self.users:
             if password == self.users[user]['password']:
                 authorized = True
-
         return authorized
 
 
@@ -205,13 +203,13 @@ class ApiHandler(BaseHTTPRequestHandler):
             path = self.path
 
             if path == '/':
-                path = os.path.abspath('{}/index.html'.format(self.server.config.web_root))
+                path = '{}/index.html'.format(self.server.config.web_root)
             else:
-                path = os.path.abspath(self.server.config.web_root + path)
+                path = self.server.config.web_root + path
 
-            if path.startswith(os.path.abspath(self.server.config.web_root)):
+            if os.path.abspath(path).startswith(self.server.config.web_root):
                 # Only serve files under application root or user specified location
-                self.serve_file(os.path.abspath(path))
+                self.serve_file(path)
             else:
                 self.send_error(404, self.responses[404][1])
 
@@ -256,8 +254,7 @@ class ApiHandler(BaseHTTPRequestHandler):
                     method(args, rdata)
                     return
             else:
-                self.write_response(400,
-                                    [('Access-Control-Allow-Origin', '*'), ('Content-Type', 'application/json')],
+                self.write_response(400, [('Access-Control-Allow-Origin', '*'), ('Content-Type', 'application/json')],
                                     '{{"versions": {}}}'.format(json.dumps(self.api_versions)))
                 return
 
