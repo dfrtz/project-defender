@@ -2,7 +2,6 @@
 """Primary Application"""
 
 import argparse
-import time
 
 from cli import HostShell
 from sol.http import *
@@ -21,9 +20,8 @@ ARGS_MODES = {
 
 
 class DefenderServerConfig(AuthServerConfig):
-    def __init__(self):
-        super(DefenderServerConfig, self).__init__()
-
+    def __init__(self, user_config=None):
+        super(DefenderServerConfig, self).__init__(user_config)
         self.request_handler = DefenderHandler
         self.db = None
         self.mediad = None
@@ -49,7 +47,6 @@ class DefenderHandler(ApiHandler):
 
     def serve_file(self, path):
         config = self.server.config
-        # TODO Check if in server or client mode
 
         if path.endswith('.html'):
             # TODO Show main page
@@ -92,61 +89,36 @@ class DefenderHandler(ApiHandler):
             super(DefenderHandler, self).serve_file(path)
 
 
-def get_date_time_string():
-    now = time.time()
-    year, month, day, hour, minute, second = time.localtime(now)
-    time_string = '{:04d}-{:02d}-{:02d}T{:02d}:{:02d}:{:02d}'.format(year, month, day, hour, minute, second)
-    return time_string
-
-
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Launch HTTP service and/or shell to control home defense devices.')
+    parser.add_argument('-c', '--config',
+                        help='Configuration file')
     parser.add_argument('-w', '--web-root',
-                        help='Web server root folder. Default = ./html')
+                        help='Web server root folder')
     parser.add_argument('-l', '--log',
-                        help='Log operations to file')
+                        help='Log operations to specific file')
     parser.add_argument('-a', '--address',
                         help='Web server bind address')
     parser.add_argument('-p', '--port', type=int,
                         help='Web server bind port')
     parser.add_argument('-s', '--secure',
-                        help='HTTPS certificate. Tip: To generate self signed, use: openssl req -newkey rsa:4096 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem')
-    parser.add_argument('-u', '--user-db', default='user_auth.db',
+                        help=('HTTPS certificate. Tip: To generate self signed key and cert, use:\n'
+                              'openssl req -newkey rsa:4096 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem'))
+    parser.add_argument('-k', '--key',
+                        help=('HTTPS key. Tip: To generate self signed key and cert, use:\n'
+                              'openssl req -newkey rsa:4096 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem'))
+    parser.add_argument('-u', '--user-db',
                         help='User Authentication SQL database.')
     parser.add_argument('-m', '--mode', default='both', choices=['client', 'server', 'both'],
                         help='Application run mode.')
-    parser.add_argument('-c', '--config',
-                        help='Configuration file')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='Enable debugging on launch')
-
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-
-    shell = HostShell()
-    http_config = DefenderServerConfig()
-    http_service = HttpService(http_config)
-    media_service = None
-
-    # Create configurations and assign user defined variables
-    if args.web_root:
-        http_config.web_root = os.path.abspath(args.web_root)
-    if args.secure:
-        http_config.secure = args.secure
-    if args.address:
-        http_config.host = args.address
-    if args.port:
-        http_config.port = args.port
-    if args.log:
-        http_config.log = args.log
-    if args.debug:
-        http_config.debug = args.debug
-    if args.mode:
-        http_config.mode = ARGS_MODES.get(args.mode, MODE_BOTH)
 
     config = {}
     if args.config:
@@ -159,9 +131,35 @@ def main():
         except FileNotFoundError:
             pass
             # self.log_message('No configuration file found: {}'.format(args.config))
+    if not config:
+        config = {'server': {}, 'media': {}}
 
-    authdb = AuthDatabase(os.path.abspath(args.user_db))
-    http_config.db = authdb
+    # Create configurations and assign user defined variables
+    if args.web_root:
+        config['server']['html'] = args.web_root
+    if args.secure:
+        config['server']['cert'] = args.secure
+    if args.key:
+        config['server']['key'] = args.key
+    if args.address:
+        config['server']['address'] = args.address
+    if args.port:
+        config['server']['port'] = args.port
+    if args.log:
+        config['server']['log'] = args.log
+    if args.debug:
+        config['server']['debug'] = args.debug
+    if args.user_db:
+        if 'database' not in config['server']:
+            config['server']['database'] = {}
+        config['server']['database']['user'] = args.user_db
+    if args.mode:
+        config['server']['mode'] = ARGS_MODES.get(args.mode, MODE_BOTH)
+
+    media_service = None
+    http_config = DefenderServerConfig(config.get('server', None))
+    http_service = HttpService(http_config)
+    http_config.db = AuthDatabase(config['server']['database'].get('user', '~/temp_users.db'))
 
     # Start services before entering user prompt mode
     http_service.start()
@@ -172,10 +170,8 @@ def main():
         http_config.mediad = media_service
         media_service.start()
 
-        # TODO debug
-        # print(media.AudioStream.mk_wav_header())
-
-    shell.set_authdb(authdb)
+    shell = HostShell()
+    shell.set_authdb(http_config.db)
     shell.set_httpd(http_service)
     shell.set_mediad(media_service)
     try:
