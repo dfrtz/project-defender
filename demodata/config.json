@@ -8,21 +8,21 @@
     "log": "~/defender/defender_httpd.log",
     "mode": "both",
     "debug": false,
-    "database": {
-      "user" : "~/defender/user_auth.db"
-    }
+    "authenticator": "~/defender/user_auth.db"
   },
   "media": {
     "video": {
       "device": 0,
-      "width": 1280,
-      "height": 720,
+      "width": 640,
+      "height": 480,
       "fps": 30,
-      "quality" : 85
+      "quality" : 90
     },
     "audio": {
+      "device": "USB Device 0x46d:0x825",
       "channels": 1,
-      "rate": 48000
+      "rate": 32000,
+      "chunk": 8192
     },
     "log": "~/defender/defender_media.log"
   }
