@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Project Defender</title>
+    <title>Project Defender - Manager</title>
 
     <link rel="stylesheet" href="vendor/bootstrap/3.3.7/bootstrap.min.css">
     <link rel="stylesheet" href="vendor/bootstrap/3.3.7/bootstrap-theme.min.css">
@@ -35,27 +35,29 @@
     <script src="vendor/bootstrap/3.3.7/bootstrap-decorator.min.js"></script>
 
     <!-- Application libraries -->
-    <script src="scripts/vendor/sol-core.js"></script>
-    <script src="scripts/vendor/sol-file.js"></script>
-    <script src="scripts/vendor/sol-json.js"></script>
-    <script src="scripts/vendor/sol-ui.js"></script>
-    <script src="scripts/vendor/sol-ng-decorators.js"></script>
+    <script src="scripts/sol-core.js"></script>
+    <script src="scripts/sol-file.js"></script>
+    <script src="scripts/sol-json.js"></script>
+    <script src="scripts/sol-ui.js"></script>
+    <script src="scripts/sol-ng-decorators.js"></script>
 
     <!-- Application -->
-    <script src="scripts/app.js"></script>
-    <script src="scripts/controllers/PdCtrl.js"></script>
-    <script src="scripts/controllers/PdSentryCtrl.js"></script>
+    <script src="app/app.js"></script>
+    <script src="app/services/PdmMainData.js"></script>
+    <script src="app/controllers/PdmCtrl.js"></script>
+    <script src="app/controllers/PdmSentryCtrl.js"></script>
+    <script src="app/controllers/PdmCameraCtrl.js"></script>
 </head>
 
 <script>
 </script>
 
-<body id="root" ng-app="pdManager">
-<div id="toast-container" ng-controller="PdCtrl as pdCtrl" ng-cloak layout="column">
+<body id="root" ng-app="projectDefenderManager">
+<div id="toast-container" ng-controller="PdmCtrl as pdmCtrl" ng-cloak layout="column">
     <!-- Main Appbar -->
     <md-toolbar class="md-primary md-hue-2">
         <div class="md-toolbar-tools">
-            <md-button class="md-icon-button" ng-click="pdCtrl.onToggleDrawer('left')">
+            <md-button class="md-icon-button" ng-click="pdmCtrl.onToggleDrawer('left')">
                 <md-icon class="material-icons step">menu</md-icon>
             </md-button>
             <h2><span>Defender Manager</span></h2>
@@ -76,18 +78,18 @@
     <!-- Main Left drawer -->
     <md-sidenav class="md-sidenav-left md-whiteframe-4dp" md-component-id="left">
         <div class="drawer-banner">
-            <img src="./images/art_combo.svg">
+            <img src="images/art_combo.svg">
             <div>
                 <h1 class="md-headline">Project Defender</h1>
-                <h6 class="md-subhead">Home Defense Manager</h6>
+                <h6 class="md-subhead">Security and Defense Manager</h6>
             </div>
         </div>
         <md-list flex>
-            <md-list-item ng-repeat="page in pdCtrl.pages track by $index" ng-click="pdCtrl.onLoadPage($index)"
+            <md-list-item ng-repeat="page in pdmCtrl.pages track by $index" ng-click="pdmCtrl.onLoadPage($index)"
                           style="position: relative"
-                          md-colors="(pdCtrl.selections.page == $index ? {'background-color': 'default-primary-700-0.75', 'color': 'grey-A100'} : {})">
+                          md-colors="(pdmCtrl.selections.page == $index ? {'background-color': 'default-primary-700-0.75', 'color': 'grey-A100'} : {})">
                 <md-icon class="material-icons"
-                         md-colors="(pdCtrl.selections.page == $index ? {'color': 'grey-A100'} : {})">{{page.icon}}
+                         md-colors="(pdmCtrl.selections.page == $index ? {'color': 'grey-A100'} : {})">{{page.icon}}
                 </md-icon>
                 <div class="md-list-item-text" flex>
                     <h3></h3>
@@ -104,6 +106,13 @@
                 </div>
             </md-list-item>
             <md-divider></md-divider>
+            <md-list-item ng-click="pdmCtrl.onShowAbout(event)" style="position: relative">
+                <md-icon class="material-icons" md-colors="(pdmCtrl.selections.page == $index ? {'color': 'grey-A100'} : {})">info</md-icon>
+                <div class="md-list-item-text" flex>
+                    <h3></h3>
+                    <p>About</p>
+                </div>
+            </md-list-item>
         </md-list>
         <!--<md-content layout-padding>
             <a ng-click="tubCtrl.onToggleDrawer('left')" href="#images">Shortcut</a>
@@ -112,20 +121,20 @@
 
     <!-- Main content window-->
     <md-tabs class="md-primary md-hue-2" md-selected="pdCtrl.selections.page" flex>
-        <md-tab label="Sentries">
-            <md-content class="root" ng-controller="PdSentryCtrl as pdSentryCtrl">
-                <!-- Guest Configuration Details-->
-                <a name="sentries"></a>
+        <!-- Camera Details-->
+        <md-tab label="Cameras">
+            <md-content class="root" ng-controller="PdmCameraCtrl as pdmCameraCtrl">
+                <a name="cameras"></a>
                 <div class="whitespace"></div>
                 <div>
                     <md-toolbar class="card-wide md-primary md-hue-2">
                         <div class="md-toolbar-tools">
-                            <h2><span>Sentries &nbsp;&nbsp;</span></h2>
-                            <md-switch class="md-primary" sol-slideable-toggle="card-sentries"
-                                       ng-model="pdSentryCtrl.activeCards.cards" aria-label="Show Cards"></md-switch>
+                            <h2><span>Cameras &nbsp;&nbsp;</span></h2>
+                            <md-switch class="md-primary" sol-slideable-toggle="card-cameras"
+                                       ng-model="pdmCameraCtrl.activeCards.cards" aria-label="Show Cameras"></md-switch>
                             <span flex></span>
-                            <md-button class="md-icon-button" ng-click="pdSentryCtrl.onGuestDelete()"
-                                       ng-show="pdSentryCtrl.sentries.length">
+                            <md-button class="md-icon-button" ng-click="pdmCameraCtrl.onCameraDelete()"
+                                       ng-show="pdmCameraCtrl.cameras.length">
                                 <md-icon class="material-icons step">delete</md-icon>
                                 <md-tooltip md-direction="below" md-delay="750">Delete Sentry</md-tooltip>
                             </md-button>
@@ -135,29 +144,46 @@
                                 </md-button>
                                 <md-menu-content>
                                     <md-menu-item>
-                                        <md-button ng-click="pdSentryCtrl.onSentriesDisarm()">Disarm All Sentries
+                                        <md-button ng-click="pdmCameraCtrl.onCamerasDisarm()">Disable All Cameras
                                         </md-button>
                                     </md-menu-item>
                                 </md-menu-content>
                             </md-menu>
                         </div>
                     </md-toolbar>
-                    <md-card id="card-sentries" class="card-wide sol-slideable" expanded="true">
+                    <md-card id="card-cameras" class="card-wide sol-slideable" expanded="true">
                         <div>
-                            <div layout="row" ng-show="pdSentryCtrl.sentries.length">
+                            <div layout="row" ng-show="pdmCameraCtrl.cameras.length">
                                 <div class="list-group tabs-left" flex>
                                     <button class="list-group-item"
-                                            ng-repeat="sentry in pdSentryCtrl.sentries track by $index"
-                                            md-colors="(pdSentryCtrl.selection == $index ? {'background-color': 'default-primary-700', 'color': 'grey-A100'} : {})"
-                                            ng-click="pdSentryCtrl.onSentrySelect($index)"
-                                            ng-bind-html="pdSentryCtrl.getSentryName($index)"></button>
+                                            ng-repeat="camera in pdmCameraCtrl.cameras track by $index"
+                                            md-colors="(pdmCameraCtrl.selection == $index ? {'background-color': 'default-primary-700', 'color': 'grey-A100'} : {})"
+                                            ng-click="pdmCameraCtrl.onCameraSelect($index)"
+                                            ng-bind-html="pdmCameraCtrl.getCameraName($index)"></button>
                                 </div>
 
                                 <div flex="80">
-                                    <md-tabs class="md-primary md-hue-2" md-selected="" flex>
+                                    <md-tabs class="md-primary md-hue-2" md-selected="pdmCameraCtrl.page">
                                         <md-tab label="Overview">
                                             <md-content class="no-bg">
-                                                <div class="whitespace" ng-show="pdSentryCtrl.sentries.length"></div>
+                                                <div class="whitespace" ng-show="pdmCameraCtrl.cameras.length"></div>
+
+                                                <!--<div layout="row" style="width: 100%">
+                                                    <div flex></div>
+                                                    <div>
+                                                        <img src="video"/>
+                                                    </div>
+                                                    <div flex></div>
+                                                </div>-->
+                                                <p>audio</p>
+                                                <div layout="row" style="width: 100%">
+                                                    <div flex></div>
+                                                    <div>
+                                                        <audio src="audio" type="audio/x-wav" controls autoplay="autoplay">
+                                                    </div>
+                                                    <div flex></div>
+                                                </div>
+                                                <p>audio</p>
                                             </md-content>
                                         </md-tab>
                                         <md-tab label="Status">
@@ -172,22 +198,98 @@
                                     </md-tabs>
                                     <div class="overlay" flex="80"
                                          style="background-color: rgba(0, 0, 0, 0.5);margin-left: 20%"
-                                         ng-hide="!pdSentryCtrl.loadingActivated">
+                                         ng-hide="!pdmCameraCtrl.loadingActivated">
                                         <md-progress-circular class="md-primary md-hue-3" md-diameter="60"
-                                                              ng-hide="!pdSentryCtrl.loadingActivated"
-                                                              ng-disable="!pdSentryCtrl.loadingActivated"></md-progress-circular>
+                                                              ng-hide="!pdmCameraCtrl.loadingActivated"
+                                                              ng-disable="!pdmCameraCtrl.loadingActivated"></md-progress-circular>
                                     </div>
                                     <div class="overlay" flex="80"
                                          style="background-color: rgba(0, 0, 0, 0.5);margin-left: 20%"
-                                         ng-hide="!pdSentryCtrl.loadingFailed"></div>
+                                         ng-hide="!pdmCameraCtrl.loadingFailed"></div>
                                 </div>
                             </div>
-                            <div class="whitespace" ng-show="pdSentryCtrl.sentries.length"></div>
+                            <div class="whitespace" ng-show="pdmCameraCtrl.cameras.length"></div>
                         </div>
                     </md-card>
                 </div>
             </md-content>
         </md-tab>
+        <!-- Sentry Details
+        <md-tab label="Sentries">
+            <md-content class="root" ng-controller="PdmSentryCtrl as pdmSentryCtrl">
+                <a name="sentries"></a>
+                <div class="whitespace"></div>
+                <div>
+                    <md-toolbar class="card-wide md-primary md-hue-2">
+                        <div class="md-toolbar-tools">
+                            <h2><span>Sentries &nbsp;&nbsp;</span></h2>
+                            <md-switch class="md-primary" sol-slideable-toggle="card-sentries"
+                                       ng-model="pdmSentryCtrl.activeCards.cards" aria-label="Show Sentries"></md-switch>
+                            <span flex></span>
+                            <md-button class="md-icon-button" ng-click="pdmSentryCtrl.onSentryDelete()"
+                                       ng-show="pdmSentryCtrl.sentries.length">
+                                <md-icon class="material-icons step">delete</md-icon>
+                                <md-tooltip md-direction="below" md-delay="750">Delete Sentry</md-tooltip>
+                            </md-button>
+                            <md-menu md-position-mode="target-right target">
+                                <md-button class="md-icon-button" ng-click="$mdOpenMenu($event)">
+                                    <md-icon md-menu-origin class="material-icons step">more_vert</md-icon>
+                                </md-button>
+                                <md-menu-content>
+                                    <md-menu-item>
+                                        <md-button ng-click="pdmSentryCtrl.onSentriesDisarm()">Disarm All Sentries
+                                        </md-button>
+                                    </md-menu-item>
+                                </md-menu-content>
+                            </md-menu>
+                        </div>
+                    </md-toolbar>
+                    <md-card id="card-sentries" class="card-wide sol-slideable" expanded="true">
+                        <div>
+                            <div layout="row" ng-show="pdmSentryCtrl.sentries.length">
+                                <div class="list-group tabs-left" flex>
+                                    <button class="list-group-item"
+                                            ng-repeat="sentry in pdmSentryCtrl.sentries track by $index"
+                                            md-colors="(pdmSentryCtrl.selection == $index ? {'background-color': 'default-primary-700', 'color': 'grey-A100'} : {})"
+                                            ng-click="pdmSentryCtrl.onSentrySelect($index)"
+                                            ng-bind-html="pdmSentryCtrl.getSentryName($index)"></button>
+                                </div>
+
+                                <div flex="80">
+                                    <md-tabs class="md-primary md-hue-2" md-selected="" flex>
+                                        <md-tab label="Overview">
+                                            <md-content class="no-bg">
+                                                <div class="whitespace" ng-show="pdmSentryCtrl.sentries.length"></div>
+                                            </md-content>
+                                        </md-tab>
+                                        <md-tab label="Status">
+                                            <md-content class="no-bg">
+                                            </md-content>
+                                        </md-tab>
+                                        <md-tab label="Hardware">
+                                            <md-content class="no-bg">
+                                            </md-content>
+                                        </md-tab>
+
+                                    </md-tabs>
+                                    <div class="overlay" flex="80"
+                                         style="background-color: rgba(0, 0, 0, 0.5);margin-left: 20%"
+                                         ng-hide="!pdmSentryCtrl.loadingActivated">
+                                        <md-progress-circular class="md-primary md-hue-3" md-diameter="60"
+                                                              ng-hide="!pdmSentryCtrl.loadingActivated"
+                                                              ng-disable="!pdmSentryCtrl.loadingActivated"></md-progress-circular>
+                                    </div>
+                                    <div class="overlay" flex="80"
+                                         style="background-color: rgba(0, 0, 0, 0.5);margin-left: 20%"
+                                         ng-hide="!pdmSentryCtrl.loadingFailed"></div>
+                                </div>
+                            </div>
+                            <div class="whitespace" ng-show="pdmSentryCtrl.sentries.length"></div>
+                        </div>
+                    </md-card>
+                </div>
+            </md-content>
+        </md-tab>-->
     </md-tabs>
 </div>
 </body>
