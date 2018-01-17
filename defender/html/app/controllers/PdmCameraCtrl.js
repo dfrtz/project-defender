@@ -1,6 +1,16 @@
-angular.module('projectDefenderManager').controller('PdmSentryCtrl', ['MainData', '$scope', '$http', '$timeout', '$q', '$mdColors', '$mdDialog', '$mdToast', PdSentryCtrl]);
+/**
+ * @file A Project Defender - Manager app controller for camera management. This controller requires nesting under a
+ * PdmCtrl controller.
+ *
+ * @author David Fritz
+ * @version 0.1.0
+ *
+ * @copyright 2015-2017 David Fritz
+ * @license MIT
+ */
+angular.module('projectDefenderManager').controller('PdmCameraCtrl', ['MainData', '$scope', '$http', '$timeout', '$q', '$mdColors', '$mdDialog', '$mdToast', PdmCameraCtrl]);
 
-function PdSentryCtrl(MainData, $scope, $http, $timeout, $q, $mdColors, $mdDialog, $mdToast) {
+function PdmCameraCtrl(MainData, $scope, $http, $timeout, $q, $mdColors, $mdDialog, $mdToast) {
     var self = this;
 
     var TIMEOUT = 30 * 1000;
@@ -8,74 +18,96 @@ function PdSentryCtrl(MainData, $scope, $http, $timeout, $q, $mdColors, $mdDialo
     self.activeCards = {
         main: true
     };
-
-    self.sentryDataCurrent = {};
-
-    var loadingCanceler = $q.defer();
+    self.cameraDataCurrent = {};
     self.loadingActivated = false;
     self.pendingLoad = null;
-
-    self.sentries = [];
-
+    self.cameras = [];
     self.selection = -1;
+    self.page = 0;
 
-    // Internal functions
+    var loadingCanceler = $q.defer();
+
+    /**
+     * Initializes controller by executing first run operations.
+     *
+     * Must be called at end of assignments.
+     */
     function init() {
-        // Load Schemas
+        self.cameras = [
+            {name: "local", path: "video"}
+        ];
+        // Load saved devices
         $http({
-            url: 'api/1.0/sentries',
+            url: 'api/1.0/cameras',
             dataType: 'json',
             method: 'GET',
             data: '',
             headers: {
                 "Content-Type": "application/json"
             }
-        }).success(function(response) {
-            self.sentries = response.sentries || [];
+        }).success(function (response) {
+            self.cameras.concat(response.cameras || []);
         });
+
+        self.onCameraSelect(0);
     }
 
-    self.getSentryName = function(index) {
-        var sentry = self.sentries[index];
-        var name = sentry;
+    /**
+     * Retrieves camera name with optional formatted text.
+     *
+     * @param {number} index Position of Camera in cache.
+     *
+     * @returns String representing card name.
+     */
+    self.getCameraName = function (index) {
+        var name = self.cameras[index];
 
         if (!name) {
-            name = "Sentry " + index;
+            name = "Camera " + index;
         }
 
         return name;
     };
 
-    self.onSentrySelect = function(index) {
-        if (!self.sentries.length) {
-            // No items remaining, clear form and hide
-            self.selection = -1;
-            self.sentryDataCurrent = {};
+    /**
+     * Updates internal tracking information based on actively selected Camera.
+     *
+     * @param {number} index Position of Camera in cache.
+     */
+    self.onCameraSelect = function (index) {
+        if (index === self.selection) {
             return;
         }
 
-        if (index == -1) {
+        if (!self.cameras.length) {
+            // No items remaining, clear form and hide
+            self.selection = -1;
+            self.cameraDataCurrent = {};
+            return;
+        }
+
+        if (index === -1) {
             index = 0;
         }
 
-        loadingCanceler.resolve();
+        /*loadingCanceler.resolve();
         loadingCanceler = $q.defer();
 
         self.loadingActivated = true;
         self.loadingFailed = false;
 
         $timeout.cancel(self.pendingLoad);
-        self.pendingLoad = $timeout(function() {
+        self.pendingLoad = $timeout(function () {
             if (self.loadingActivated) {
                 loadingCanceler.resolve();
                 self.loadingActivated = false;
                 self.loadingFailed = true;
-                $scope.simpleToast('Loading timeout: ' + self.guests[index]);
+                $scope.simpleToast('Loading timeout: ' + self.cameras[index].name);
             }
         }, TIMEOUT);
 
         $http({
-            url: 'api/1.0/sentry/' + self.guests[index],
+            url: 'api/1.0/camera/' + self.cameras[index],
             dataType: 'json',
             method: 'GET',
             data: '',
@@ -83,26 +115,19 @@ function PdSentryCtrl(MainData, $scope, $http, $timeout, $q, $mdColors, $mdDialo
                 "Content-Type": "application/json"
             },
             timeout: loadingCanceler.promise
-        }).success(function(response) {
+        }).success(function (response) {
             $timeout.cancel(self.pendingLoad);
             self.loadingActivated = false;
-            self.guestDataCurrent = response || {};
+            self.cameraDataCurrent = response || {};
 
             if (JSON.stringify(self.sentryDataCurrent) === JSON.stringify({})) {
                 self.loadingFailed = true;
-                $scope.simpleToast('Loading failed: ' + self.sentries[index]);
+                $scope.simpleToast('Loading failed: ' + self.cameras[index].name);
             }
-        });
+        });*/
 
         self.selection = index;
     };
 
-    // Add watchers to update UI
-
-    // Add user event listeners
-
-    // Action to perform on load
     init();
 }
-
-// Object Constructors

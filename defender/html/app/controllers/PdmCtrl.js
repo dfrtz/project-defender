@@ -1,6 +1,15 @@
-angular.module('projectDefenderManager').controller('PdmCtrl', ['MainData', '$window', '$scope', '$mdColors', '$mdDialog', '$mdToast', '$mdSidenav', PdCtrl]);
+/**
+ * @file Primary Project Defender - Manager app controller. All additional controllers should be nested inside this controller.
+ *
+ * @author David Fritz
+ * @version 0.1.0
+ *
+ * @copyright 2015-2017 David Fritz
+ * @license MIT
+ */
+angular.module('projectDefenderManager').controller('PdmCtrl', ['MainData', '$window', '$scope', '$mdColors', '$mdDialog', '$mdToast', '$mdSidenav', PdmCtrl]);
 
-function PdCtrl(MainData, $window, $scope, $mdColors, $mdDialog, $mdToast, $mdSidenav) {
+function PdmCtrl(MainData, $window, $scope, $mdColors, $mdDialog, $mdToast, $mdSidenav) {
     var self = this;
 
     this.selections = {
@@ -10,6 +19,8 @@ function PdCtrl(MainData, $window, $scope, $mdColors, $mdDialog, $mdToast, $mdSi
         {title: "Cameras", icon: 'home'}
         //{title: "Sentries", icon: 'home'}
     ];
+
+    $scope.decorator = "bootstrap-decorator";
 
     /**
      * Initializes controller by executing first run operations.
@@ -39,6 +50,33 @@ function PdCtrl(MainData, $window, $scope, $mdColors, $mdDialog, $mdToast, $mdSi
     self.onLoadPage = function (page) {
         self.onToggleDrawer("left");
         $scope.onSelectTab(page);
+    };
+
+    /**
+     * Creates and displays the About section of the application.
+     */
+    self.onShowAbout = function () {
+        function DialogController($scope, $mdDialog) {
+            $scope.hide = function () {
+                $mdDialog.hide();
+            };
+
+            $scope.cancel = function () {
+                $mdDialog.cancel();
+            };
+
+            $scope.answer = function (answer) {
+                $mdDialog.hide(answer);
+            };
+        }
+
+        self.onToggleDrawer("left");
+        $mdDialog.show({
+            controller: DialogController,
+            templateUrl: "app/templates/template_dialog_about.html",
+            targetEvent: event,
+            clickOutsideToClose: true
+        });
     };
 
     /**
