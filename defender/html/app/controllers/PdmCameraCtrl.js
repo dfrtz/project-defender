@@ -1,4 +1,4 @@
-angular.module('pdManager').controller('PdSentryCtrl', ['MainData', '$scope', '$http', '$timeout', '$q', '$mdColors', '$mdDialog', '$mdToast', PdSentryCtrl]);
+angular.module('projectDefenderManager').controller('PdmSentryCtrl', ['MainData', '$scope', '$http', '$timeout', '$q', '$mdColors', '$mdDialog', '$mdToast', PdSentryCtrl]);
 
 function PdSentryCtrl(MainData, $scope, $http, $timeout, $q, $mdColors, $mdDialog, $mdToast) {
     var self = this;
