@@ -1,3 +1,5 @@
+"""Access control for SQL databases and tables."""
+
 import sqlite3
 from abc import ABC, abstractmethod
 from pathlib import Path
@@ -8,7 +10,7 @@ class SQLiteDatabase(object):
 
     Attributes:
         path: A string path to database file. May be ":memory:" to create database in RAM.
-        _connection: A sqlite3 connection
+        _connection: A sqlite3 connection.
     """
     NO_ENTRY = -1
 
@@ -17,7 +19,7 @@ class SQLiteDatabase(object):
         self._connection = None
 
     def create(self):
-        """Creates database on local filesystem."""
+        """Creates database on the local filesystem."""
         sqlite3.connect(self.path).close()
 
     def open(self, flags):
@@ -26,10 +28,10 @@ class SQLiteDatabase(object):
         Connection will remain open until close() is called.
 
         Args:
-            flags: A string representing option flags to apply to SQLite connection
+            flags: A string representing option flags to apply to SQLite connection.
 
         Returns:
-            True if no connection is open and new connection is successful, False if the connection is already open
+            True if no connection is open and new connection is successful, False if the connection is already open.
         """
         if not self.is_open():
             path = 'file:{}'.format(self.path) if self.path != ':memory:' else ':memory:'
@@ -41,7 +43,7 @@ class SQLiteDatabase(object):
         """Checks if a connection is already open to the database.
 
         Returns:
-            True if connection exists, False otherwise
+            True if connection exists, False otherwise.
         """
         return self._connection is not None
 
@@ -49,7 +51,7 @@ class SQLiteDatabase(object):
         """Disconnects the database from the storage.
 
         Returns:
-            True if the database is open and is successfully closed, False if the database is not open
+            True if the database is open and is successfully closed, False if the database is not open.
         """
         if not self.is_open():
             return False
@@ -64,11 +66,11 @@ class SQLiteDatabase(object):
         internal processes with hardcoded statements.
 
         Args:
-            statement: A string representing a SQL command
-            values: A collection of optional parameters to pass to SQLite cursor
+            statement: A string representing a SQL command.
+            values: A collection of optional parameters to pass to SQLite cursor.
 
         Returns:
-            True is statement is executed, False if database is not open
+            True is statement is executed, False if database is not open.
         """
         if not self.is_open():
             return False
@@ -81,10 +83,10 @@ class SQLiteDatabase(object):
         """Applies version number to database schema.
 
         Args:
-            version: An integer representing the new version
+            version: An integer representing the new version.
 
         Returns:
-            True if new version matches supplied version after update, False if database is closed or versions mismatch
+            True if new version matches supplied version after update, False if database is closed or versions mismatch.
         """
         if not self.is_open():
             return False
@@ -149,11 +151,11 @@ class SQLiteDatabase(object):
         """Performs a SQL INSERT statement on a table.
 
         Args:
-            table_name: A string representing a table name in the database
-            entry: A dictionary to store in the database with keys as columns and values as row data
+            table_name: A string representing a table name in the database.
+            entry: A dictionary to store in the database with keys as columns and values as row data.
 
         Returns:
-            The total amount of rows inserted into database or -1 if an error occurred
+            The total amount of rows inserted into database or -1 if an error occurred.
         """
         if not self.is_open() or not entry:
             return SQLiteDatabase.NO_ENTRY
@@ -174,13 +176,14 @@ class SQLiteDatabase(object):
         """Performs a SQL UPDATE statement on a table.
 
         Args:
-            table_name: A string representing a table name in the database
-            entry: A dictionary to store in the database with keys as columns and values as row data
-            where_clause: A string representing the conditional statements for valid rows with question marks for values
-            where_args: An iterable set of values to pass into the question marks from the where clause
+            table_name: A string representing a table name in the database.
+            entry: A dictionary to store in the database with keys as columns and values as row data.
+            where_clause: A string representing the conditional statements for valid rows with question marks for
+                values.
+            where_args: An iterable set of values to pass into the question marks from the where clause.
 
         Returns:
-            The total amount of rows updated, or -1 if an error occurred
+            The total amount of rows updated, or -1 if an error occurred.
         """
         if not self.is_open() or not where_clause or not where_args or not entry:
             return SQLiteDatabase.NO_ENTRY
@@ -200,12 +203,13 @@ class SQLiteDatabase(object):
         """Performs a SQL DELETE statement on a table.
 
         Args:
-            table_name: A string representing a table name in the database
-            where_clause: A string representing the conditional statements for valid rows with question marks for values
-            where_args: An iterable set of values to pass into the question marks from the where clause
+            table_name: A string representing a table name in the database.
+            where_clause: A string representing the conditional statements for valid rows with question marks for
+                values.
+            where_args: An iterable set of values to pass into the question marks from the where clause.
 
         Returns:
-            The total amount of rows removed, or -1 if an error occurred
+            The total amount of rows removed, or -1 if an error occurred.
         """
         if not self.is_open() or not where_clause or not where_args:
             return SQLiteDatabase.NO_ENTRY
@@ -223,10 +227,10 @@ class SQLiteDatabase(object):
         """Converts key:value pairs into a SQL compatible portion of query statement replacing values with '?'s.
 
         Args:
-            value_groups: An iterable of tuples representing column to value pairs
+            value_groups: An iterable of tuples representing column to value pairs.
 
         Returns:
-            A string in SQL query format with the original column names saved and values replaced with '?'s
+            A string in SQL query format with the original column names saved and values replaced with '?'s.
         """
         return ','.join(str('{} = ?'.format(key)) for key, _ in value_groups)
 
@@ -235,12 +239,12 @@ class SQLiteDatabase(object):
         """Provides SQL statement formatted list of question marks to be replaced with parameters in a SQL query.
 
         Args:
-            count: An integer to determine the total amount of '?'s
+            count: An integer to determine the total amount of '?'s.
 
         Returns:
-            A string in SQL query format with requested amount of '?'s
+            A string in SQL query format with requested amount of '?'s.
         """
-        return '({})'.format(','.join('?' for i in range(0, count)))
+        return '({})'.format(','.join(['?' for _ in range(0, count)]))
 
     @staticmethod
     def qmark_values(value_groups, columns=True, rows=True):
@@ -249,9 +253,9 @@ class SQLiteDatabase(object):
         The result should be used in combination with a qmarks() of the same length.
 
         Args:
-            value_groups: An iterable of tuples representing column to value pairs
-            columns: Boolean to determine if the keys should be converted
-            rows: Boolean to determine if the values should be converted
+            value_groups: An iterable of tuples representing column to value pairs.
+            columns: Boolean to determine if the keys should be converted.
+            rows: Boolean to determine if the values should be converted.
 
         Returns:
             An iterable with final values maintaining order of the groups that were passed.
@@ -270,8 +274,8 @@ class SQLiteTable(ABC):
 
     Attributes:
         path: A string path to database file. May be ":memory:" to create database in RAM.
-        _name: A string representing the name of a single table in the database
-        _helper: A SQLiteHelper responsible for handling database retrieval
+        _name: A string representing the name of a single table in the database.
+        _helper: A SQLiteHelper responsible for handling database retrieval.
     """
 
     def __init__(self, path):
@@ -286,7 +290,7 @@ class SQLiteTable(ABC):
         This method should only be called once during initialization of the object and should never be called manually.
 
         Returns:
-            A SQLiteHelper which will be used to manage all database access requests
+            A SQLiteHelper which will be used to manage all database access requests.
         """
         pass
 
@@ -297,7 +301,7 @@ class SQLiteTable(ABC):
         This method should only be called once during initialization of the object and should never be called manually.
 
         Returns:
-            A string representing the name of this table in a database which will be used for all queries
+            A string representing the name of this table in a database which will be used for all queries.
         """
         pass
 
@@ -307,23 +311,23 @@ class SQLiteTable(ABC):
         """Creates a string to be used when the table is initially created on the storage.
 
         Returns:
-            A SQL string that can be executed on a database to create the table
+            A SQL string that can be executed on a database to create the table.
         """
         pass
 
     def get_readable_db(self):
-        """Requests a read and write database from the SQLiteHelper
+        """Requests a read and write database from the SQLiteHelper.
 
         Returns:
-            A SQLiteDatabase in read and write mode
+            A SQLiteDatabase in read and write mode.
         """
         return self._helper.get_readable_db()
 
     def get_writable_db(self):
-        """Requests a read only database from the SQLiteHelper
+        """Requests a read only database from the SQLiteHelper.
 
         Returns:
-            A SQLiteDatabase in read only mode
+            A SQLiteDatabase in read only mode.
         """
         return self._helper.get_writable_db()
 
@@ -331,13 +335,13 @@ class SQLiteTable(ABC):
         """Performs a SQL SELECT statement.
 
         Args:
-            columns: An iterable set of strings for columns to pull from table
-            selection: A string representing the conditional statements for valid rows with question marks for values
-            selection_args: An iterable set of values to pass into the question marks from the selection statement
-            order_by: A string of the column name to order by
+            columns: An iterable set of strings for columns to pull from table.
+            selection: A string representing the conditional statements for valid rows with question marks for values.
+            selection_args: An iterable set of values to pass into the question marks from the selection statement.
+            order_by: A string of the column name to order by.
 
         Returns:
-            A list dictionaries with column names as keys, and row values as values
+            A list dictionaries with column names as keys, and row values as values.
         """
         database = self.get_readable_db()
         entries = database.select(self._name, columns, selection, selection_args, order_by)
@@ -348,10 +352,10 @@ class SQLiteTable(ABC):
         """Performs a SQL INSERT statement.
 
          Args:
-             entry: A dictionary to store in the database with keys as columns and values as row data
+             entry: A dictionary to store in the database with keys as columns and values as row data.
 
          Returns:
-             The total amount of rows inserted into database or -1 if an error occurred
+             The total amount of rows inserted into database or -1 if an error occurred.
          """
         database = self.get_writable_db()
         count = database.insert(self._name, entry)
@@ -362,12 +366,13 @@ class SQLiteTable(ABC):
         """Performs a SQL UPDATE statement.
 
         Args:
-            entry: A dictionary to store in the database with keys as columns and values as row data
-            where_clause: A string representing the conditional statements for valid rows with question marks for values
-            where_args: An iterable set of values to pass into the question marks from the where clause
+            entry: A dictionary to store in the database with keys as columns and values as row data.
+            where_clause: A string representing the conditional statements for valid rows with question marks for
+                values.
+            where_args: An iterable set of values to pass into the question marks from the where clause.
 
         Returns:
-            The total amount of rows updated, or -1 if an error occurred
+            The total amount of rows updated, or -1 if an error occurred.
         """
         database = self.get_writable_db()
         count = database.update(self._name, entry, where_clause, where_args)
@@ -378,11 +383,12 @@ class SQLiteTable(ABC):
         """Performs a SQL UPDATE statement.
 
         Args:
-            where_clause: A string representing the conditional statements for valid rows with question marks for values
-            where_args: An iterable set of values to pass into the question marks from the where clause
+            where_clause: A string representing the conditional statements for valid rows with question marks for
+                values.
+            where_args: An iterable set of values to pass into the question marks from the where clause.
 
         Returns:
-            The total amount of rows updated, or -1 if an error occurred
+            The total amount of rows updated, or -1 if an error occurred.
         """
         database = self.get_writable_db()
         count = database.remove(self._name, where_clause, where_args)
@@ -395,12 +401,20 @@ class SQLiteHelper(ABC):
 
     Attributes:
         path: A string path to database file. May be ":memory:" to create database in RAM.
-        database: A shared SQLiteDatabase between all operations
+        database: A shared SQLiteDatabase between all operations.
+        database_version: An integer representing the version of the database used for creation and updates.
     """
 
-    def __init__(self, path, database_version):
+    def __init__(self, path, database_version=1):
+        """Initializes the helper.
+
+        Args:
+            path: A string path to database file. May be ":memory:" to create database in RAM.
+            database_version: An integer representing the version of the database used for creation and updates.
+        """
         self.path = path
         self.database = None
+        self.database_version = database_version
 
         self._init_db(database_version)
         self.open('mode=rw')
@@ -412,10 +426,10 @@ class SQLiteHelper(ABC):
         """Opens the shared database.
 
         Args:
-            flags: A string representing option flags to apply to SQLite connection
+            flags: A string representing option flags to apply to SQLite connection.
 
         Returns:
-            True if no connection is open and new connection is successful, False if the connection is already open
+            True if no connection is open and new connection is successful, False if the connection is already open.
         """
         return self.database.open(flags)
 
@@ -423,7 +437,7 @@ class SQLiteHelper(ABC):
         """Closes the shared database.
 
         Returns:
-            True if the database is open and is successfully closed, False if the database is not open
+            True if the database is open and is successfully closed, False if the database is not open.
         """
         return self.database.close()
 
@@ -431,7 +445,7 @@ class SQLiteHelper(ABC):
         """Opens the database in read and write mode.
 
         Returns:
-            The SQLiteDatabase for this helper
+            The SQLiteDatabase for this helper.
         """
         self.open('mode=rw')
         return self.database
@@ -440,7 +454,7 @@ class SQLiteHelper(ABC):
         """Opens the database in read only mode.
 
         Returns:
-            The SQLiteDatabase for this helper
+            The SQLiteDatabase for this helper.
         """
         self.open('mode=ro')
         return self.database
@@ -449,7 +463,7 @@ class SQLiteHelper(ABC):
         """Initializes the database from storage including creating tables if necessary.
 
         Args:
-            version: An integer representing the initial version number of the database when newly created
+            version: An integer representing the initial version number of the database when newly created.
         """
         path = Path(self.path).expanduser().absolute() if self.path != ':memory:' else ':memory:'
         self.database = SQLiteDatabase(str(path))
@@ -474,7 +488,7 @@ class SQLiteHelper(ABC):
         """Provides SQL queries to be run when tables are created in the database.
 
         Returns:
-            A list of SQL "CREATE TABLE" commands which will be executed directly on the database
+            A list of SQL "CREATE TABLE" commands which will be executed directly on the database.
         """
         return []
 
@@ -483,7 +497,7 @@ class SQLiteHelper(ABC):
         """Verifies the current version against a specified version to perform upgrade modification tasks.
 
         Args:
-            new_version: An integer representing the version that the database should be after maintenance
+            new_version: An integer representing the version that the database should be after maintenance.
         """
         pass
 
@@ -495,6 +509,6 @@ class SQLiteHelper(ABC):
         correct a poorly designed upgrade.
 
         Args:
-            old_version: An integer representing the version that the database should be after maintenance
+            old_version: An integer representing the version that the database should be after maintenance.
         """
         pass
