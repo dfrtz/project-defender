@@ -1,6 +1,6 @@
 # Defender
 Defender is a Python and Javascript based Web Application/Rest API to manage streaming of audio and video from security cameras, and other devices, in a local network.
-Seecurity is currently achieved through the use of HTTPS certificates, and a salted User/Password database. For simplicity and greater compatibility with low end devices, video is streamed as MJPEG, and audio is streamed as WAV (meaning bandwidth usage is not optimized).
+Security is currently achieved through the use of HTTPS certificates, and a salted User/Password database with PBKDF2 SHA512 combo. For simplicity and greater compatibility with low end devices, video is streamed as MJPEG, and audio is streamed as WAV (meaning bandwidth usage is not optimized).
 Streams can be saved using separate applications with support for HTTP, such as FFMPEG, VLC, etc.
 
 Currently this application supports Video streaming through OpenCV:  
@@ -16,9 +16,12 @@ https://pypi.python.org/pypi/PyAudio
 2. Clone/pull repository.
 
 3. Copy frontend demo data to local folder:  
-`cp -R demodata ~/defender`
+`cp -R demodata ~/defender`  
+`cp -R defender/html ~/defender`
 
 4. Update the configuration file with values to match your environment and capture devices' capabilities:  
+`defender/defender.py --list-devices`  
+`v4l2-ctl --list-devices`  
 `vi ~/defender/config.json`
 
 5. Generate new custom HTTPS certificate:  
@@ -38,7 +41,10 @@ If new user was added, remove default:
 7. Attempt to load the video stream in a browser by going to:  
 `https://<hostname or ip>:<port>/video`
 
+#### Known Limitations
 - For some reason HTTP traffic appears to fail loading page/serving API calls, until reason is determined HTTPS should always be used.
+- Multiple concurrent connections to audio streams may overflow buffer and degrade playback.
+- Password hashing can leading to slowdown with the initial load of the provided HTML frontend unless the JS scripts are minified into one.
 
 # Requirements
 - Python3
@@ -49,7 +55,11 @@ If new user was added, remove default:
 - Webcam with builtin microphone. Tested on Logitech C210.
 
 # Future Enhancements
+- Multiple streams per device
+- Motion tracking
+- Audio Playback (two way communication)
 - Support for controlling remote motorized devices, such as turret cameras, drones, etc.
 - Builtin A/V recording through application, instead of with 3rd party applications such as FFMPEG/VLC.
 - Possibly additional compression formats for A/V.
-- Implement API session keys option in combination with username/password.
+- Migrate HTTP interfaces to Flask
+- Implement API sessions to increase authorization speed on lower end devices.
