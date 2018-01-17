@@ -253,3 +253,7 @@ from opencv-3.3.0/3rdparty/libjpeg/jdmarker.c and rebuild:
 2. Install Python dependencies:  
 `pip install pyaudio`  
 `pip install imutils`
+
+3. Install system dependencies
+    - For displaying video devices:  
+    `sudo apt-get install v4l-utils`

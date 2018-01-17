@@ -10,11 +10,10 @@ setup(
     author='David Fritz',
     tests_require=['pytest'],
     install_requires=[],
-    author_email='dfritz@solaristudios.com',
-    description='Home Defense Device Manager with REST API',
+    description='Security and Defense Device Manager with REST API',
     packages=['defender'],
     platforms='Linux',
-    classifiers = [
+    classifiers=[
         'Programming Language :: Python',
         'Development Status :: 4 - Beta',
         'Natural Language :: English',
