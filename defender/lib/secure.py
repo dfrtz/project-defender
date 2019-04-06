@@ -2,10 +2,10 @@
 
 import base64
 import hashlib
-from os import urandom
+import os
 
-from sol import sql
-from sol.http import ApiServer
+from defender.lib import sql
+from defender.lib.http import ApiServer
 
 
 class AuthServer(ApiServer):
@@ -51,7 +51,7 @@ class AuthDatabase(object):
 
     def generate_salt(self):
         """Generates a salt string."""
-        return base64.b64encode(urandom(self._salt_len)).decode('utf-8')
+        return base64.b64encode(os.urandom(self._salt_len)).decode('utf-8')
 
     def add_user(self, username, password):
         """Adds a new user to the backend storage and cache.

@@ -1,10 +1,10 @@
 """Interactive shells for isolated user program access."""
 
+import abc
 import readline
-from abc import ABC, abstractmethod
 
 
-class BaseShell(ABC):
+class BaseShell(object, metaclass=abc.ABCMeta):
     """Base level interactive shell to read, parse, and execute user commands.
 
     Attributes:
@@ -36,7 +36,7 @@ class BaseShell(ABC):
         completer.extend(self._get_cmd_list())
         return completer
 
-    @abstractmethod
+    @abc.abstractmethod
     def _get_cmd_list(self):
         """Provides a list of available commands.
 
@@ -45,7 +45,7 @@ class BaseShell(ABC):
         """
         return []
 
-    @abstractmethod
+    @abc.abstractmethod
     def _setup_parser(self):
         """Creates a new argument parser which can be fed text based commands.
 

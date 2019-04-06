@@ -4,17 +4,20 @@ import base64
 import ctypes
 import logging
 import logging.handlers
+import os
 import random
 import string
 import threading
 import time
 import wave
+
 from contextlib import contextmanager
-from io import BytesIO, StringIO
-from os import path
+from io import BytesIO
+from io import StringIO
 
 import cv2
 import pyaudio
+
 from PIL import Image
 
 
@@ -362,7 +365,7 @@ class MediaConfig(object):
             config = {}
         self.video = VideoConfig(config.get('video', None))
         self.audio = AudioConfig(config.get('audio', None))
-        self.log = path.abspath(path.expanduser(config.get('log', 'media.log')))
+        self.log = os.path.abspath(os.path.expanduser(config.get('log', 'media.log')))
         self.debug = False
 
 

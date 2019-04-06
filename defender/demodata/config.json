@@ -1,14 +1,14 @@
 {
   "server": {
-    "html": "~/defender/html",
-    "cert": "~/defender/server.pem",
-    "key": "~/defender/key.pem",
+    "html": "~/.defender/html",
+    "cert": "~/.defender/server.pem",
+    "key": "~/.defender/key.pem",
     "address": "0.0.0.0",
     "port": 8080,
-    "log": "~/defender/defender_httpd.log",
+    "log": "~/.defender/defender_httpd.log",
     "mode": "both",
     "debug": false,
-    "authenticator": "~/defender/user_auth.db"
+    "authenticator": "~/.defender/user_auth.db"
   },
   "media": {
     "video": {
@@ -24,6 +24,6 @@
       "rate": 32000,
       "chunk": 8192
     },
-    "log": "~/defender/defender_media.log"
+    "log": "~/.defender/defender_media.log"
   }
 }
