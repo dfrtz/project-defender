@@ -3,8 +3,8 @@
 import argparse
 import getpass
 
-from sol import shells
-from sol.secure import AuthTable
+from defender.lib import shells
+from defender.lib.secure import AuthTable
 
 
 class HostShell(shells.BaseShell):

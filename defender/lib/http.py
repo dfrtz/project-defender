@@ -1,17 +1,18 @@
 """Service requests to and from users with Hypertext Transport Protocol."""
 
+import abc
 import base64
 import json
 import logging
 import logging.handlers
+import os
+import pathlib
 import re
 import socket
 import ssl
 import threading
-from abc import ABC, abstractmethod
+
 from http.server import BaseHTTPRequestHandler
-from os import path
-from pathlib import Path
 from socketserver import ThreadingTCPServer
 
 
@@ -91,7 +92,7 @@ class ApiService(object):
             # Wrap HTTPD socket in SSL if a certificate was provided
             cert_loaded = False
             if self.config.secure:
-                if Path(self.config.secure).absolute().is_file():
+                if pathlib.Path(self.config.secure).absolute().is_file():
                     # TODO: Validate certificate
                     self.log_message('HTTP service loading SSL cert: {}'.format(self.config.secure), True)
                     self.server.socket = ssl.wrap_socket(self.server.socket, keyfile=self.config.key,
@@ -231,7 +232,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             else:
                 file_path = self.server.config.web_root + file_path
 
-            if path.abspath(file_path).startswith(self.server.config.web_root):
+            if os.path.abspath(file_path).startswith(self.server.config.web_root):
                 # Only serve files under application root or user specified location
                 self.serve_file(file_path)
             else:
@@ -306,7 +307,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         """
         try:
             if file_path.endswith(self.file_exts):
-                if not Path(file_path).absolute().is_file():
+                if not pathlib.Path(file_path).absolute().is_file():
                     raise IOError('File does not exist within root path')
                 with open(file_path, 'rb') as binary_file:
                     # Only serve specified files. Disable folder browsing
@@ -345,7 +346,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         self.wfile.write(data.encode('utf-8'))
 
 
-class ApiServer(ThreadingTCPServer, ABC):
+class ApiServer(ThreadingTCPServer, metaclass=abc.ABCMeta):
     """Base multi-threaded HTTP server with user authentication.
 
     Attributes:
@@ -358,7 +359,7 @@ class ApiServer(ThreadingTCPServer, ABC):
         self.config = config
         self.authenticator = self._init_authenticator()
 
-    @abstractmethod
+    @abc.abstractmethod
     def _init_authenticator(self):
         """Initializes an object capable of authentication.
 
@@ -409,10 +410,10 @@ class ApiConfig(object):
         """
         if not user_config:
             user_config = {}
-        self.web_root = path.abspath(path.expanduser(user_config.get('html', 'html')))
-        self.log = path.abspath(path.expanduser(user_config.get('log', 'httpd.log')))
-        self.secure = path.abspath(path.expanduser(user_config.get('cert', 'server.pem')))
-        self.key = path.abspath(path.expanduser(user_config.get('key', 'key.pem')))
+        self.web_root = os.path.abspath(os.path.expanduser(user_config.get('html', 'html')))
+        self.log = os.path.abspath(os.path.expanduser(user_config.get('log', 'httpd.log')))
+        self.secure = os.path.abspath(os.path.expanduser(user_config.get('cert', 'server.pem')))
+        self.key = os.path.abspath(os.path.expanduser(user_config.get('key', 'key.pem')))
         self.host = user_config.get('address', '0.0.0.0')
         self.port = user_config.get('port', 8080)
         self.debug = user_config.get('debug', False)

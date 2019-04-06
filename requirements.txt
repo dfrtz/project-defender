@@ -1,2 +1,4 @@
-Pillow
-pyaudio
+imutils==0.5.2
+numpy==1.16.2
+Pillow==6.0.0
+PyAudio==0.2.11

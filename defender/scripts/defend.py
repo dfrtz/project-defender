@@ -1,12 +1,14 @@
-#! /usr/bin/env python3
+#!/usr/bin/env python
 """Primary Application"""
 
 import argparse
 import json
 
-from cli import HostShell
-from sol.http import ApiConfig, ApiHandler, ApiService
-from sol.secure import AuthServer
+from defender.lib.cli import HostShell
+from defender.lib.http import ApiConfig
+from defender.lib.http import ApiHandler
+from defender.lib.http import ApiService
+from defender.lib.secure import AuthServer
 
 MODE_BOTH = 0
 MODE_CLIENT = 1
@@ -144,8 +146,7 @@ def load_config(args):
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Launch HTTP service and/or shell to control home defense devices.')
+    parser = argparse.ArgumentParser(description='Launch HTTP service and/or shell to control home defense devices.')
     parser.add_argument('--list-devices', action='store_true', default=False,
                         help='Enable debugging on launch')
     parser.add_argument('-c', '--config',
@@ -177,11 +178,12 @@ def main():
     args = parse_args()
 
     config = load_config(args)
-    api_config = DefenderServerConfig(config.get('server', None))
+    api_config = DefenderServerConfig(config.get('server', {}))
 
     if api_config.mode in {MODE_CLIENT, MODE_BOTH} or args.list_devices:
         try:
-            import media
+            # Only attempt to load the media libraries if this client is in a mode expected to use OpenCV.
+            from defender.lib import media
             if args.list_devices:
                 media.MediaService.list_devices()
                 return

@@ -1,8 +1,8 @@
 """Access control for SQL databases and tables."""
 
+import abc
+import pathlib
 import sqlite3
-from abc import ABC, abstractmethod
-from pathlib import Path
 
 
 class SQLiteDatabase(object):
@@ -269,7 +269,7 @@ class SQLiteDatabase(object):
         return qmarks
 
 
-class SQLiteTable(ABC):
+class SQLiteTable(object, metaclass=abc.ABCMeta):
     """SQLite convenience class used to manage creation, upgrades, downgrades, and simplify queries to tables.
 
     Attributes:
@@ -283,7 +283,7 @@ class SQLiteTable(ABC):
         self._name = self._get_table_name()
         self._helper = self._init_helper()
 
-    @abstractmethod
+    @abc.abstractmethod
     def _init_helper(self):
         """Creates a database helper to manage all connectivity to storage during queries.
 
@@ -294,7 +294,7 @@ class SQLiteTable(ABC):
         """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def _get_table_name(self):
         """Creates a string for the table to use with all SQL queries.
 
@@ -306,7 +306,7 @@ class SQLiteTable(ABC):
         pass
 
     @staticmethod
-    @abstractmethod
+    @abc.abstractmethod
     def get_table_create_statement():
         """Creates a string to be used when the table is initially created on the storage.
 
@@ -396,7 +396,7 @@ class SQLiteTable(ABC):
         return count
 
 
-class SQLiteHelper(ABC):
+class SQLiteHelper(object, metaclass=abc.ABCMeta):
     """SQLite helper class used to manage creation, upgrades, downgrades, and simplify queries to databases.
 
     Attributes:
@@ -465,7 +465,7 @@ class SQLiteHelper(ABC):
         Args:
             version: An integer representing the initial version number of the database when newly created.
         """
-        path = Path(self.path).expanduser().absolute() if self.path != ':memory:' else ':memory:'
+        path = pathlib.Path(self.path).expanduser().absolute() if self.path != ':memory:' else ':memory:'
         self.database = SQLiteDatabase(str(path))
 
         # DB must be instantiated after checking path to prevent accidental creation
@@ -483,7 +483,7 @@ class SQLiteHelper(ABC):
                 self.database.execute(create_table)
             self.close()
 
-    @abstractmethod
+    @abc.abstractmethod
     def _get_tables_to_create(self):
         """Provides SQL queries to be run when tables are created in the database.
 
@@ -492,7 +492,7 @@ class SQLiteHelper(ABC):
         """
         return []
 
-    @abstractmethod
+    @abc.abstractmethod
     def upgrade_db(self, new_version):
         """Verifies the current version against a specified version to perform upgrade modification tasks.
 
@@ -501,7 +501,7 @@ class SQLiteHelper(ABC):
         """
         pass
 
-    @abstractmethod
+    @abc.abstractmethod
     def downgrade_db(self, old_version):
         """Verifies the current version against a specified version to perform downgrade modification tasks.
 
