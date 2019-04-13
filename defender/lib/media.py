@@ -14,11 +14,19 @@ import wave
 from contextlib import contextmanager
 from io import BytesIO
 from io import StringIO
+from typing import Any
+from typing import Tuple
 
 import cv2
 import pyaudio
 
 from PIL import Image
+
+# Error handler taken from: alsa-lib.git include/error.h
+# typedef void (*snd_lib_error_handler_t)(const char *file, int line, const char *function, int err, const char *fmt)
+ALSA_ERR_HANDLER = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p)
+CHARS = string.ascii_uppercase + string.ascii_lowercase + string.digits
+NO_STREAM = -1
 
 
 class LogService(object):
@@ -28,16 +36,17 @@ class LogService(object):
         logger: A logging object to write messages out to storage.
     """
 
-    def __init__(self, logger):
+    def __init__(self, logger: logging.Logger) -> None:
+        """Setup the service with a given logger."""
         self.logger = logger
 
-    def log_message(self, message, external=False, level=logging.INFO):
+    def log_message(self, message: str, external: bool = False, level: int = logging.INFO) -> None:
         """Logs a message to storage and to output visible to users.
 
         Args:
-            message: A string representing the message to save and display.
-            external: A boolean to determine if the message is visible to user.
-            level: A logging.level used to determine the severity of the message.
+            message: The message to save and display.
+            external: Whether the message is visible to user.
+            level: Level used to determine the severity of the message.
         """
         if self.logger:
             self.logger.log(level, message)
@@ -49,11 +58,11 @@ class VideoConfig(object):
     """Configuration information to control video streams.
 
     Attributes:
-        device: An integer representing the device index of the video input to open.
-        width: An integer for the width of the images captures in pixels.
-        height: An integer for the height of the images captures in pixels.
-        framerate: An integer amount of the maximum amount of images to capture per second.
-        quality: An integer representing the image quality after compression between 0-100
+        device: Device index of the video input to open.
+        width: Width of the images captures in pixels.
+        height: Height of the images captures in pixels.
+        framerate: Maximum amount of images to capture per second.
+        quality: Image quality after compression between 0-100.
     """
     DEVICE = 0
     WIDTH = 640
@@ -61,11 +70,12 @@ class VideoConfig(object):
     FRAMERATE = 30
     QUALITY = 85
 
-    def __init__(self, config=None):
+    def __init__(self, config: dict = None) -> None:
         """Initializes attributes from a user specified configuration object or defaults.
 
         Args:
-            config: Dictionary containing user predefined values for initialization."""
+            config: User predefined values for initialization.
+        """
         if not config:
             config = {}
         self.device = config.get('device', VideoConfig.DEVICE)
@@ -80,18 +90,17 @@ class VideoStream(LogService):
 
     Attributes:
         config: A VideoConfig containing information for the stream.
-        _image: A bytes like object representing the most recently captured image.
-        _stop_event: A threading.Event() used to control start and stop operations on the capture thread.
     """
 
-    def __init__(self, config, logger=None):
+    def __init__(self, config: VideoConfig, logger: logging.Logger = None) -> None:
+        """Initialize the stream with custom config and null image."""
         super(VideoStream, self).__init__(logger)
-        self.config = config
         self._image = None
         self._stop_event = threading.Event()
         self._stop_event.set()
+        self.config = config
 
-    def start(self):
+    def start(self) -> Any:
         """Creates the background capture thread to read images from the input asynchronously.
 
         Returns:
@@ -105,32 +114,35 @@ class VideoStream(LogService):
             self.log_message('Video stream cannot start, already capturing.', True)
         return self
 
-    def process_stream(self, heartbeat_interval=1):
+    def process_stream(self, heartbeat_interval: int = 1) -> None:
         """Initializes video stream for continuous access until service is stopped.
 
         Args:
-            heartbeat_interval: An integer representing how often to check for an open device in seconds.
+            heartbeat_interval: How often to check for an open device in seconds.
         """
+        stream = None
         while not self._stop_event.is_set():
             stream = cv2.VideoCapture(self.config.device)
             stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.width)
             stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.height)
             if stream.isOpened():
                 break
-            self.log_message('Video stream could not open, waiting {} seconds and trying again'
-                             .format(heartbeat_interval), True)
+            self.log_message(f'Video stream could not open, retrying in {heartbeat_interval} seconds.', True)
             time.sleep(heartbeat_interval)
 
-        self.log_message('Video stream running.', True)
-        while stream.isOpened() and not self._stop_event.is_set():
-            captured, image = stream.read()
-            if captured:
-                self._image = image
-        stream.release()
-        self._image = None
-        self.log_message('Video stream stopped.', True)
+        if stream is not None:
+            self.log_message('Video stream running.', True)
+            while stream.isOpened() and not self._stop_event.is_set():
+                captured, image = stream.read()
+                if captured:
+                    # Update the internal image, this will be sent to the streams.
+                    self._image = image
+            # Release the stream and saved image to free up memory.
+            stream.release()
+            self._image = None
+            self.log_message('Video stream stopped.', True)
 
-    def read(self):
+    def read(self) -> bytes:
         """Provides the most recently captured image.
 
         Returns:
@@ -138,7 +150,7 @@ class VideoStream(LogService):
         """
         return self._image
 
-    def stop(self):
+    def stop(self) -> None:
         """Signals the background capture thread to stop reading images."""
         if not self._stop_event.is_set():
             self.log_message('Video stream stopping.', True)
@@ -163,11 +175,11 @@ class AudioConfig(object):
     CHANNELS = 2
     RATE = 44100
 
-    def __init__(self, config=None):
+    def __init__(self, config: dict = None) -> None:
         """Initializes attributes from a user specified configuration object or defaults.
 
         Args:
-            config: Dictionary containing user predefined values for initialization."""
+            config: User predefined values for initialization."""
         if not config:
             config = {}
         self.device = config.get('device', AudioConfig.DEVICE)
@@ -182,64 +194,51 @@ class AudioStream(LogService):
 
     Attributes:
         config: An Audio containing information for the stream.
-        _chunk: A bytes like object representing the most recently captured audio.
-        _chunk_index: An integer tracking the offset of the recent audio chunk to signal data has changed.
-        _stream: A blocking audio stream which will be stopped on shutdown.
-        _stop_event: A threading.Event() used to control start and stop operations on the capture thread.
         header: A base64 encoded byte string representing the beginning of an audio file.
     """
 
-    # Error handler taken from: alsa-lib.git include/error.h
-    # typedef void (*snd_lib_error_handler_t)(const char *file, int line, const char *function, int err, const char *fmt)
-    ERR_HANDLER = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p)
-    NO_STREAM = -1
-
-    def __init__(self, config, logger=None):
+    def __init__(self, config: AudioConfig, logger: logging.Logger = None) -> None:
+        """Initialize the stream with custom config and null header."""
         super(AudioStream, self).__init__(logger)
-        self.config = config
         self._chunk = None
-        self._chunk_index = AudioStream.NO_STREAM
+        self._chunk_index = NO_STREAM
         self._stream = None
         self._stop_event = threading.Event()
         self._stop_event.set()
+        self.config = config
         self.header = ''
 
-    def start(self):
-        """Creates the background capture thread to listen for audio from the input asynchronously.
+    @staticmethod
+    def _c_error_handler(file: str, line: int, function_name: str, err: int, fmt: str):
+        """Handles an error message from C based libraries."""
+        # Error handler reference taken from: alsa-lib.git include/error.h
+        # typedef void (*snd_lib_error_handler_t)(const char *file, int line, const char *function, int err, const char *fmt)
 
-        Returns:
-            Self for chaining calls.
-        """
-        if self._stop_event.is_set():
-            self._stop_event.clear()
-            self.log_message('Audio stream starting.', True)
-            threading.Thread(target=self.process_stream, args=()).start()
-        else:
-            self.log_message('Audio stream cannot start, already capturing.', True)
-        return self
-
-    def process_stream(self, heartbeat_interval=1):
+    def _process_stream(self, heartbeat_interval: int = 1) -> None:
         """Initializes audio stream for continuous access until service is stopped.
 
         Args:
-            heartbeat_interval: An integer representing how often to check for an open device in seconds.
+            heartbeat_interval: How often to check for an open device in seconds.
         """
         self.header = AudioStream.mk_wav_header(self.config.channels, self.config.format, self.config.framerate)
         chunk_size = self.config.chunk
         try:
-            # Find the correct device ID
+            # Find the correct device ID.
             dev_id = 0
             device_found = False
+            audio = None
             while not self._stop_event.is_set():
+                # Hide the error spam while trying to open the audio stream
                 with AudioStream.hide_c_errors('libasound.so'):
                     audio = pyaudio.PyAudio()
-                for i in range(audio.get_device_count()):
-                    dev = audio.get_device_info_by_index(i)
+                # Loop over every device until the match is found. Indexes and names may or may not exist.
+                for index in range(audio.get_device_count()):
+                    dev = audio.get_device_info_by_index(index)
                     if isinstance(self.config.device, int):
                         if self.config.device == dev['index']:
                             device_found = True
                             break
-                    # Indexes are not reliable, allow a name string to be used instead
+                    # Indexes are not as reliable, allow a name string to be used instead.
                     if isinstance(self.config.device, str):
                         if self.config.device in dev['name']:
                             dev_id = dev['index']
@@ -247,75 +246,86 @@ class AudioStream(LogService):
                             break
                 if device_found:
                     break
+                # Close the audio device, a connection could not be made.
                 audio.terminate()
-                self.log_message('Audio stream could not open missing device, waiting {} seconds and trying again'
-                                 .format(heartbeat_interval), True)
+                self.log_message(f'Audio stream could not open device, retrying in {heartbeat_interval} seconds.', True)
                 time.sleep(heartbeat_interval)
 
-            # Open the stream only if a device ID was found
-            self._stream = audio.open(format=self.config.format,
-                                      channels=self.config.channels,
-                                      rate=self.config.framerate,
-                                      input=True,
-                                      input_device_index=dev_id,
-                                      frames_per_buffer=chunk_size)
+            if audio is None:
+                # Open the stream only if a device ID was found
+                self._stream = audio.open(format=self.config.format,
+                                          channels=self.config.channels,
+                                          rate=self.config.framerate,
+                                          input=True,
+                                          input_device_index=dev_id,
+                                          frames_per_buffer=chunk_size)
 
-            self.log_message('Audio stream running.', True)
-            try:
-                while self._stream.is_active() and not self._stop_event.is_set():
-                    data = self._stream.read(chunk_size, False)
-                    if len(data):
-                        self._chunk = data
-                        # Cycle audio chunk index to reflect data is new
-                        self._chunk_index = self._chunk_index + 1
-                        if self._chunk_index > 100:
-                            self._chunk_index = 0
-            except OSError as error:
-                print('Audio Service low level error: {}'.format(error))
-                self.log_message('AudioStream:process_stream - low level error - {}'.format(error), level=logging.ERROR)
+                self.log_message('Audio stream running.', True)
+                try:
+                    while self._stream.is_active() and not self._stop_event.is_set():
+                        data = self._stream.read(chunk_size, False)
+                        if len(data):
+                            self._chunk = data
+                            # Cycle audio chunk index to reflect data is new
+                            self._chunk_index = self._chunk_index + 1
+                            if self._chunk_index > 100:
+                                self._chunk_index = 0
+                except OSError as error:
+                    self.log_message(f'process_stream - low level error - {error}', True, level=logging.ERROR)
 
-            self._chunk = None
-            self._chunk_index = AudioStream.NO_STREAM
-            self._stream.stop_stream()
-            self._stream.close()
-            audio.terminate()
-            self.log_message('Audio stream stopped.', True)
-        except OSError as error:
-            self.log_message('AudioStream:process_stream - high level - error {}'.format(error), level=logging.ERROR)
-
-    def read(self):
-        """Provides the most recently captured audio chunk data.
-
-        Returns:
-            A tuple with index of audio stream to determine if data is new, and bytes like object representing the most
-            recently captured audio chunk, or (-1, None) if no audio is available.
-        """
-        return self._chunk_index, self._chunk
-
-    def stop(self):
-        """Signals the background capture thread to stop listening for audio."""
-        if not self._stop_event.is_set():
-            self.log_message('Audio stream stopping.', True)
-            self._stop_event.set()
-            if self._stream:
+                self._chunk = None
+                self._chunk_index = NO_STREAM
                 self._stream.stop_stream()
                 self._stream.close()
-        else:
-            self.log_message('Audio stream offline. Aborting repeat shutdown.', True)
+                audio.terminate()
+                self.log_message('Audio stream stopped.', True)
+        except OSError as error:
+            self.log_message(f'process_stream - high level - error {error}', True, level=logging.ERROR)
 
     @staticmethod
-    def gen_lock_id():
-        chars = string.ascii_uppercase + string.ascii_lowercase + string.digits
-        return ''.join(random.choice(chars) for _ in range(16))
+    @contextmanager
+    def hide_c_errors(lib_file: str) -> None:
+        """Sets a temporary error handler for a C based library.
+
+        Args:
+            lib_file: A library file name. Example: 'libasound.so'
+        """
+        lib = ctypes.cdll.LoadLibrary(lib_file)
+        lib.snd_lib_error_set_handler(ALSA_ERR_HANDLER(AudioStream._c_error_handler))
+        yield
+        lib.snd_lib_error_set_handler(None)
 
     @staticmethod
-    def mk_wav_header(channels, audio_format, framerate):
+    def gen_lock_id() -> str:
+        """Creates a random ID used to lock streams and prevent releasing data in transit."""
+        id = ''.join(random.choice(CHARS) for _ in range(16))
+        return id
+
+    @staticmethod
+    def list_devices() -> None:
+        """Provide a list of all available audio devices and details to user."""
+        print('Audio Devices:')
+        with AudioStream.hide_c_errors('libasound.so'):
+            p = pyaudio.PyAudio()
+        for i in range(p.get_device_count()):
+            dev = p.get_device_info_by_index(i)
+            for key, value in dev.items():
+                print('{:<25} {}'.format(key + ':', value))
+            print()
+        p.terminate()
+        print()
+
+    @staticmethod
+    def mk_wav_header(channels: int, audio_format: int, framerate: int) -> bytes:
         """Creates header information for a WAV file.
 
         Args:
-            channels: An integer representing the desired number of input channels to capture.
-            audio_format: An integer representing the format of of the audio stream.
-            framerate: An integer representing the desired rate (in Hz)
+            channels: Desired number of input channels to capture.
+            audio_format: Format of of the audio stream.
+            framerate: The desired rate (in Hz).
+
+        Returns:
+            A bytes like object representing the encoding for an audio file.
         """
         with BytesIO() as memory_file, wave.open(memory_file, 'w') as wave_file:
             wave_file.setnchannels(channels)
@@ -325,25 +335,40 @@ class AudioStream(LogService):
             encoding = base64.encodebytes(memory_file.getvalue())
         return encoding
 
-    @staticmethod
-    def _c_error_handler(file, line, function_name, err, fmt):
-        """Handles an error message from C based libraries."""
-        # Error handler reference taken from: alsa-lib.git include/error.h
-        # typedef void (*snd_lib_error_handler_t)(const char *file, int line, const char *function, int err, const char *fmt)
-        pass
+    def read(self) -> Tuple[int, bytes]:
+        """Provides the most recently captured audio chunk data.
 
-    @staticmethod
-    @contextmanager
-    def hide_c_errors(lib_file):
-        """Sets a temporary error handler for a C based library.
-
-        Args:
-            lib_file: A string representing a library file name. Example: 'libasound.so'
+        Returns:
+            A tuple with index of audio stream to determine if data is new, and bytes like object representing the most
+            recently captured audio chunk, or (-1, None) if no audio is available.
         """
-        lib = ctypes.cdll.LoadLibrary(lib_file)
-        lib.snd_lib_error_set_handler(AudioStream.ERR_HANDLER(AudioStream._c_error_handler))
-        yield
-        lib.snd_lib_error_set_handler(None)
+        data = self._chunk_index, self._chunk
+        return data
+
+    def start(self) -> Any:
+        """Creates the background capture thread to listen for audio from the input asynchronously.
+
+        Returns:
+            Self for chaining calls.
+        """
+        if self._stop_event.is_set():
+            self._stop_event.clear()
+            self.log_message('Audio stream starting.', True)
+            threading.Thread(target=self._process_stream, args=()).start()
+        else:
+            self.log_message('Audio stream cannot start, already capturing.', True)
+        return self
+
+    def stop(self) -> None:
+        """Signals the background capture thread to stop listening for audio."""
+        if not self._stop_event.is_set():
+            self.log_message('Audio stream stopping.', True)
+            self._stop_event.set()
+            if self._stream:
+                self._stream.stop_stream()
+                self._stream.close()
+        else:
+            self.log_message('Audio stream offline. Aborting repeat shutdown.', True)
 
 
 class MediaConfig(object):
@@ -356,11 +381,11 @@ class MediaConfig(object):
         debug: A boolean representing whether the service is in debugging mode.
     """
 
-    def __init__(self, config=None):
+    def __init__(self, config: dict = None) -> None:
         """Initializes attributes from a user specified configuration object or defaults.
 
         Args:
-            config: Dictionary containing user predefined values for initialization."""
+            config: User predefined values for initialization."""
         if not config:
             config = {}
         self.video = VideoConfig(config.get('video', None))
@@ -373,14 +398,15 @@ class MediaService(LogService):
     """Service to control flow of multiple audio and video streams, and relay captured data to a external handlers.
 
     Attributes:
+        _stop_event: A threading.Event() used to control start and stop operations on the services.
         config: A MediaConfig containing information for audio and video streams.
         video_stream: A VideoStream service pulling data from a video input device.
         audio_stream: An AudioStream service pulling data from a audio input device.
         hog: A CV HOGDescriptor (histogram of oriented gradients) used to perform image post processing.
-        _stop_event: A threading.Event() used to control start and stop operations on the services.
     """
 
-    def __init__(self, config):
+    def __init__(self, config: MediaConfig) -> None:
+        """Setup the service will null streams."""
         super(MediaService, self).__init__(logging.getLogger(__name__))
         self.config = config
         self.video_stream = None
@@ -390,21 +416,7 @@ class MediaService(LogService):
         self._stop_event.set()
         self.setup_logger(config.log)
 
-    def setup_logger(self, log):
-        """Creates a logger to record the lifecycle of the server.
-
-        Returns:
-            A logger instance with custom formatting for the server.
-        """
-        if not len(self.logger.handlers):
-            formatter = logging.Formatter(fmt='{asctime} - {levelname} - {message}', datefmt='%Y-%m-%dT%H:%M:%S.%s',
-                                          style='{')
-            file_handler = logging.handlers.RotatingFileHandler(log, maxBytes=10000000, backupCount=5, encoding='UTF-8')
-            file_handler.setFormatter(formatter)
-            self.logger.addHandler(file_handler)
-        self.logger.setLevel(logging.INFO)
-
-    def set_debug(self, enabled=False):
+    def set_debug(self, enabled: bool = False) -> None:
         """Enables or disables debug output from the server.
 
         This method is disruptive while the setting is being applied.
@@ -421,7 +433,29 @@ class MediaService(LogService):
             self.logger.setLevel(logging.INFO)
         self.start()
 
-    def start(self):
+    def setup_logger(self, log: str) -> None:
+        """Creates a logger to record the lifecycle of the server."""
+        if not len(self.logger.handlers):
+            formatter = logging.Formatter(
+                fmt='{asctime} - {levelname} - {message}', datefmt='%Y-%m-%dT%H:%M:%S.%s', style='{'
+            )
+            file_handler = logging.handlers.RotatingFileHandler(log, maxBytes=10000000, backupCount=5, encoding='UTF-8')
+            file_handler.setFormatter(formatter)
+            self.logger.addHandler(file_handler)
+        self.logger.setLevel(logging.INFO)
+
+    def shutdown(self) -> None:
+        """Stops the audio and video server threads and prevents serving new handler requests."""
+        if not self._stop_event.is_set():
+            self._stop_event.set()
+            self.log_message('Media service shutting down', True)
+            self.video_stream.stop()
+            self.audio_stream.stop()
+            self.log_message('Media service offline', True)
+        else:
+            self.log_message('Media service offline. Aborting repeat shutdown.', True)
+
+    def start(self) -> None:
         """Creates the audio and video server threads to service new handler requests."""
         if self._stop_event.is_set():
             self._stop_event.clear()
@@ -433,32 +467,8 @@ class MediaService(LogService):
         else:
             self.log_message('Media service cannot start, streams already running.', True)
 
-    def shutdown(self):
-        """Stops the audio and video server threads and prevents serving new handler requests."""
-        if not self._stop_event.is_set():
-            self._stop_event.set()
-            self.log_message('Media service shutting down', True)
-            self.video_stream.stop()
-            self.audio_stream.stop()
-            self.log_message('Media service offline', True)
-        else:
-            self.log_message('Media service offline. Aborting repeat shutdown.', True)
-
     @staticmethod
-    def list_devices():
-        print('Audio Devices:')
-        with AudioStream.hide_c_errors('libasound.so'):
-            p = pyaudio.PyAudio()
-        for i in range(p.get_device_count()):
-            dev = p.get_device_info_by_index(i)
-            for key, value in dev.items():
-                print('{:<25} {}'.format(key + ':', value))
-            print()
-        p.terminate()
-        print()
-
-    @staticmethod
-    def write_image(handler, image):
+    def write_image(handler: Any, image: bytes) -> None:
         """Writes a single image to an external handler.
 
         Args:
@@ -472,7 +482,47 @@ class MediaService(LogService):
         handler.end_headers()
         handler.wfile.write(image)
 
-    def send_cv_stream(self, handler):
+    def send_cv_detection_stream(self, handler: Any) -> None:
+        """Opens a continuous stream to send Computer Vision processed images with various object detection models.
+
+        Args:
+            handler: An external service handler where the image will be relayed.
+        """
+        interval = 1 / self.config.video.framerate
+        quality = self.config.video.quality
+        while not self._stop_event.is_set():
+            frame = self.video_stream.read()
+            if frame is not None:
+                rects, weights = self.hog.detectMultiScale(frame, winStride=(4, 4), padding=(8, 8), scale=1.05)
+                for x, y, w, h in rects:
+                    # Create rectangles on the image if detection is being used.
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                encoded, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
+                if encoded:
+                    self.write_image(handler, jpeg.tobytes())
+            time.sleep(interval)
+
+    def send_cv_pil_stream(self, handler: Any) -> None:
+        """Opens a continuous stream to send Computer Vision processed images using Python Imaging Library (PIL).
+
+        Current testing has shown this method of processing to be slow. May be removed at a later date.
+
+        Args:
+            handler: An external service handler where the image will be relayed.
+        """
+        interval = 1 / self.config.video.framerate
+        while not self._stop_event.is_set():
+            frame = self.video_stream.read()
+            if frame is not None:
+                # Image must be converted into file like object to allow sending.
+                tmp_file = StringIO()
+                img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                Image.fromarray(img).save(tmp_file, 'JPEG')
+                self.write_image(handler, tmp_file.getvalue().encode())
+                tmp_file.close()
+            time.sleep(interval)
+
+    def send_cv_stream(self, handler: Any) -> None:
         """Opens a continuous stream to send Computer Vision processed images.
 
         Args:
@@ -487,60 +537,23 @@ class MediaService(LogService):
                     ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
                     self.write_image(handler, jpeg.tobytes())
             except cv2.error:
+                # Skip frame if an error is encountered.
                 pass
             time.sleep(interval)
 
-    def send_cv_detection_stream(self, handler):
-        """Opens a continuous stream to send Computer Vision processed images with various object detection models.
+    def send_pyaudio_stream(self, handler: Any) -> None:
+        """Opens a continuous stream to send pyaudio processed sound.
 
         Args:
-            handler: An external service handler where the image will be relayed.
-        """
-        interval = 1 / self.config.video.framerate
-        quality = self.config.video.quality
-        while not self._stop_event.is_set():
-            frame = self.video_stream.read()
-            if frame is not None:
-                rects, weights = self.hog.detectMultiScale(frame, winStride=(4, 4), padding=(8, 8), scale=1.05)
-                for (x, y, w, h) in rects:
-                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
-                encoded, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
-                if encoded:
-                    self.write_image(handler, jpeg.tobytes())
-            time.sleep(interval)
-
-    def send_cv_pil_stream(self, handler):
-        """Opens a continuous stream to send Computer Vision processed images using Python Imaging Library (PIL).
-
-        Current testing has shown this method of processing to be slow. May be removed at a later date.
-
-        Args:
-            handler: An external service handler where the image will be relayed.
-        """
-        interval = 1 / self.config.video.framerate
-        while not self._stop_event.is_set():
-            frame = self.video_stream.read()
-            if frame is not None:
-                img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                tmp_file = StringIO()
-                Image.fromarray(img).save(tmp_file, 'JPEG')
-                self.write_image(handler, tmp_file.getvalue())
-                tmp_file.close()
-            time.sleep(interval)
-
-    def send_pyaudio_stream(self, handler):
-        """Opens a continuous stream to send Computer Vision processed images.
-
-        Args:
-            handler: An external service handler where the image will be relayed.
+            handler: An external service handler where the audio will be relayed.
         """
         handler.wfile.write(base64.decodebytes(self.audio_stream.header))
-        last_index = AudioStream.NO_STREAM
+        last_index = NO_STREAM
         try:
             while not self._stop_event.is_set():
                 index, chunk = self.audio_stream.read()
-                if chunk and index != AudioStream.NO_STREAM and index != last_index:
+                if chunk and index != NO_STREAM and index != last_index:
                     handler.wfile.write(chunk)
                     last_index = index
         except OSError as error:
-            self.log_message('MediaService:send_pyaudio_stream error: {}'.format(error), level=logging.ERROR)
+            self.log_message(f'send_pyaudio_stream error: {error}', level=logging.ERROR)

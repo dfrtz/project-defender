@@ -4,20 +4,19 @@ import errno
 import json
 import socket
 
+from typing import Union
+
 
 class SocketError(Exception):
     """Base exception thrown when creating, destroying, or interacting with sockets."""
-    pass
 
 
 class SocketConnectError(SocketError):
     """Error with the connection to a socket."""
-    pass
 
 
 class SocketDisconnectError(SocketError):
     """Error during disconnect attempts on a socket."""
-    pass
 
 
 class JsonSocket(object):
@@ -29,12 +28,13 @@ class JsonSocket(object):
         socket_file: A file object associated with the socket for communication.
     """
 
-    def __init__(self, path):
+    def __init__(self, path: str) -> None:
+        """Setup socket for communication."""
         self.path = path
         self.socket = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.socket_file = self.socket.makefile()
 
-    def connect(self):
+    def connect(self) -> Union[dict, list]:
         """Opens the initial connection to the underlying socket.
 
         Returns:
@@ -49,30 +49,31 @@ class JsonSocket(object):
             raise SocketConnectError
         return greeting
 
-    def disconnect(self):
+    def disconnect(self) -> None:
         """Closes the socket and dependencies."""
         self.socket.close()
         self.socket_file.close()
 
-    def read(self):
+    def read(self) -> Union[dict, list, None]:
         """Reads a message from the socket.
 
         Returns:
-            A dictionary converted from a JSON string.
+            An object converted from a JSON string.
         """
+        result = None
         data = self.socket_file.readline()
-        if not data:
-            return
-        return json.loads(data)
+        if data:
+            result = json.loads(data)
+        return result
 
-    def write(self, msg):
+    def write(self, msg: str) -> Union[dict, list, None]:
         """Writes a JSON formatted message to the socket.
 
         Args:
-            msg: A string representing the message to send.
+            msg: The message to send.
 
         Returns:
-            A string response from the socket.
+            A response from the socket.
 
         Raises:
             socket.error: An error while sending the message.
@@ -80,7 +81,7 @@ class JsonSocket(object):
         try:
             self.socket.sendall(msg.encode())
         except socket.error as error:
-            if error.errno == errno.EPIPE:
-                return
-            raise socket.error(error)
-        return self.read()
+            if error.errno != errno.EPIPE:
+                raise socket.error(error)
+        response = self.read()
+        return response
