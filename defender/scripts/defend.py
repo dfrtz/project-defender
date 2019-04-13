@@ -1,14 +1,13 @@
 #!/usr/bin/env python
-"""Primary Application"""
+
+"""Primary Defender Application."""
 
 import argparse
 import json
 
-from defender.lib.cli import HostShell
-from defender.lib.http import ApiConfig
-from defender.lib.http import ApiHandler
-from defender.lib.http import ApiService
-from defender.lib.secure import AuthServer
+from defender.lib import cli
+from defender.lib import http
+from defender.lib import secure
 
 MODE_BOTH = 0
 MODE_CLIENT = 1
@@ -21,53 +20,44 @@ ARG_MODES = {
 }
 
 
-class DefenderServerConfig(ApiConfig):
-    """Configuration information to control the flow of HTTP requests for an API based server.
+class DefenderServerConfig(http.ApiConfig):
+    """Configuration information class to control the flow of HTTP requests for an API based server.
 
     Attributes:
-        mediad: A MediaService that all ApiHandlers will have access to while serving API requests.
-        mode: An integer representing the current type of options available to handlers from ARG_MODES.
+        mediad: Service that all ApiHandlers will have access to while serving API requests.
+        mode: Representation of the current type of options available to handlers from ARG_MODES.
     """
 
-    def __init__(self, user_config=None):
-        super(DefenderServerConfig, self).__init__(user_config, thread_handler=AuthServer,
-                                                   request_handler=DefenderHandler)
+    def __init__(self, user_config: dict = None) -> None:
+        """Initializes custom server values to add media services to standard API."""
+        super(DefenderServerConfig, self).__init__(
+            user_config,
+            thread_handler=secure.AuthServer,
+            request_handler=DefenderHandler
+        )
+        # Initialize with a null daemon, this will be updated after it is initialized asynchronously.
         self.mediad = None
         self.mode = MODE_BOTH
 
 
-class DefenderHandler(ApiHandler):
+class DefenderHandler(http.ApiHandler):
     """An HTTPRequestHandler with special access methods to allow streaming media in addition to native API handling."""
 
-    def setup_api(self):
+    def setup_api(self) -> None:
+        """Enables the base methods allowed for the API and sets the realm for user/password access."""
         self.api_options.extend(['POST', 'PUT', 'DELETE'])
         self.api_realm = 'sol-defender'
 
-    SIMPLE_TEMPLATE = b'''
-        <html>
-            <head></head>
-            <body>
-                <div>
-                    <!--<video controls="" autoplay="" name="media">
-                        <source src="audio" type="audio/x-wav">
-                    </video>-->
-                    <img src="video"/>
-                    <audio src="audio" type="audio/x-wav" controls autoplay="autoplay" preload="none">
-                </div>
-            </body>
-        </html>'''
-
-    def serve_file(self, path):
+    def serve_file(self, path: str) -> None:
+        """Overrides the default serve_file behavior to add video/audio endpoints."""
+        # Local reference to config for ease of use.
         config = self.server.config
 
         if path.endswith(self.file_exts):
-            # super(DefenderHandler, self).serve_file(path)
-            if path.endswith('index.html'):
-                self.send_response(200)
-                self.send_header('Content-Type', 'text/html')
-                self.end_headers()
-                self.wfile.write(self.SIMPLE_TEMPLATE)
+            # Use default behavior for all files that are not video/audio streams.
+            super(DefenderHandler, self).serve_file(path)
         elif config.mode in {MODE_CLIENT, MODE_BOTH}:
+            # Running process is also a media server. Provide access to video/audio endpoints.
             if path.endswith('/video'):
                 self.send_response(200)
                 self.send_header('Connection', 'close')
@@ -95,16 +85,16 @@ class DefenderHandler(ApiHandler):
                 try:
                     config.mediad.send_pyaudio_stream(self)
                 except BrokenPipeError:
-                    self.log_message('Broken Pipe')
+                    self.log_message('Audio endpoint encountered broken pipe')
         else:
             super(DefenderHandler, self).serve_file(path)
 
 
-def load_config(args):
+def load_config(args: argparse.Namespace) -> dict:
     """Loads a configuration file from local storage and overwrites values with user specified arguments.
 
     Args:
-        args: An argsparse namespace package.
+        args: User customization arguments.
 
     Returns:
         A dictionary containing user configuration information for all services.
@@ -115,11 +105,9 @@ def load_config(args):
             with open(args.config) as data_file:
                 config = json.load(data_file)
         except ValueError:
-            pass
-            # self.log_message('Invalid configuration file detected: {}'.format(args.config))
+            print(f'Invalid configuration file detected: {args.config}')
         except FileNotFoundError:
-            pass
-            # self.log_message('No configuration file found: {}'.format(args.config))
+            print(f'No configuration file found: {args.config}')
 
     # Create configurations and assign user defined variables
     if args.web_root:
@@ -145,7 +133,8 @@ def load_config(args):
     return config
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
+    """Parses user arguments for primary defender application."""
     parser = argparse.ArgumentParser(description='Launch HTTP service and/or shell to control home defense devices.')
     parser.add_argument('--list-devices', action='store_true', default=False,
                         help='Enable debugging on launch')
@@ -167,46 +156,54 @@ def parse_args():
                               'openssl req -newkey rsa:4096 -nodes -keyout key.pem -x509 -days 365 -out certificate.pem'))
     parser.add_argument('-u', '--user-db',
                         help='User Authentication SQL database.')
-    parser.add_argument('-m', '--mode', default='both', choices=['client', 'server', 'both'],
+    parser.add_argument('-m', '--mode', default='both', choices=list(ARG_MODES.keys()),
                         help='Application run mode.')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='Enable debugging on launch')
     return parser.parse_args()
 
 
-def main():
-    args = parse_args()
+def main() -> None:
+    """Main execution for Defender 'defend' application.
 
+    Summary of application flow:
+        1. Parse user arguments into a config dictionary to send to daemons.
+        2. Load OpenCV/media libraries and start media daemon if in a client (camera) mode.
+        3. Load API service to handle serving files and/or media streams.
+        3. Create user shell and handle input until exited.
+    """
+    args = parse_args()
     config = load_config(args)
     api_config = DefenderServerConfig(config.get('server', {}))
 
+    # Attempt to load the media libraries if this client is in a mode expected to use OpenCV.
     if api_config.mode in {MODE_CLIENT, MODE_BOTH} or args.list_devices:
         try:
-            # Only attempt to load the media libraries if this client is in a mode expected to use OpenCV.
             from defender.lib import media
             if args.list_devices:
-                media.MediaService.list_devices()
+                media.AudioStream.list_devices()
                 return
             media_config = media.MediaConfig(config.get('media', None))
             media_service = media.MediaService(media_config)
         except ImportError as error:
-            print('Unable to import media module: {}'.format(error))
+            print(f'Unable to import media module: {error}')
             print('Please correct media dependencies or change mode to "server".')
             return
     else:
         media_service = None
 
-    shell = HostShell()
     # Start services after creating shell, but before entering user prompt mode to show banner first
+    shell = cli.HostShell()
     if media_service:
         media_service.start()
         api_config.mediad = media_service
         shell.mediad = media_service
-    api_service = ApiService(api_config)
+    api_service = http.ApiService(api_config)
     api_service.start()
     shell.apid = api_service
 
     while shell.prompt_user():
+        # Loop until user requests exit.
         pass
 
     # Ensure all threads are properly shutdown before exiting main loop

@@ -8,19 +8,33 @@ from defender.lib.secure import AuthTable
 
 
 class HostShell(shells.BaseShell):
-    """An interactive shell to control frontend and backend services for primary application.
+    """An interactive shell class to control frontend and backend services for primary application.
+
+    All parser commands are defined in this class and automatically called depending on user input.
+    For example, if 'http logging' is entered by user, then http_logging(args) is called.
 
     Attributes:
         apid: An ApiServer which provides access to HTTP frontend and user authentication backend.
         mediad: A MediaServer which provides access to video and audio on the local device.
     """
 
-    def __init__(self, *args):
-        super(HostShell, self).__init__('Defender> ', *args)
+    def __init__(self) -> None:
+        """Initializes the base shell with prefix and null daemons."""
+        super(HostShell, self).__init__('Defender> ')
         self.apid = None
         self.mediad = None
 
-    def _setup_parser(self):
+    def _get_cmd_list(self) -> list:
+        """Creates a list of all commands that should autocomplete."""
+        commands = [
+            *['http logging info', 'http logging debug'],
+            *['service http start', 'service http stop'],
+            *['user add', 'user remove', 'user edit', 'user list']
+        ]
+        return commands
+
+    def _setup_parser(self) -> argparse.ArgumentParser:
+        """Setup all subcommand parsers accessible to the end user."""
         parser = argparse.ArgumentParser(prog='', description='Defense Monitoring System')
 
         # First level parsers
@@ -57,164 +71,183 @@ class HostShell(shells.BaseShell):
         subparser_user_edit.add_argument('-p', '--password', help='Prompts for new user credentials.',
                                          action='store_true')
 
-        # Exit supbarsers
+        # Exit subparsers
         parser_exit.add_argument('-f', '--force', help='Force shutdown', action='store_true', default=False)
         return parser
 
-    def _show_banner(self):
-        pass
+    def _show_banner(self) -> None:
+        """Do not show any banner to the user."""
 
-    def _get_cmd_list(self):
-        commands = []
-        commands.extend(['http logging info', 'http logging debug'])
-        commands.extend(['service http start', 'service http stop'])
-        commands.extend(['user add', 'user remove', 'user edit', 'user list'])
-        return commands
-
-    def exit_root(self, args):
+    def exit_root(self, args: argparse.Namespace) -> bool:
         """Prevents premature exits from program.
 
         This function is automatically called by self._execute_cmd() and should not be called manually.
 
         Args:
-            args: An argsparse namespace package.
+            args: User arguments from CLI.
+
+        Returns:
+            True if the command was handled and should continue looping. False if exit is requested.
         """
+        cmd_handled = True
         try:
             if not args.force:
                 response = input('Exit shell and shutdown all services? Y/n: ')
-                if response in ('Y', 'y'):
-                    return False
+                if response.lower() == 'y':
+                    cmd_handled = False
             else:
-                return False
+                cmd_handled = False
         except EOFError:
+            # CTRL+D intercept.
             print('')
-            return False
+            cmd_handled = False
         except KeyboardInterrupt:
+            # CTRL+C intercept.
             print('')
-        return True
+        return cmd_handled
 
-    def http_logging(self, args):
+    def http_logging(self, args: argparse.Namespace) -> bool:
         """Changes the logging level of the HTTP/API service.
 
         This function is automatically called by self._execute_cmd() and should not be called manually.
 
         Args:
-            args: An argsparse namespace package.
+            args: User arguments from CLI.
+
+        Returns:
+            True to indicate the command was handled.
         """
+        cmd_handled = True
         level = args.level
         if level == 'debug':
-            print('Warning: Enabling debugging will send additional output to console and logs,'
-                  ' and restart the HTTP server.')
-            if input('Do you wish to continue? Y/n: ') in ('Y', 'y'):
+            print('Warning: Enabling debugging will send additional output to console and logs, and restart the HTTP server.')
+            if input('Do you wish to continue? Y/n: ').lower() == 'y':
                 self.apid.set_debug(True)
         elif level == 'info':
             print('Warning: disabling debugging will restart the HTTP server.')
-            if input('Do you wish to continue? Y/n: ') in ('Y', 'y'):
+            if input('Do you wish to continue? Y/n: ').lower() == 'y':
                 self.apid.set_debug(False)
-        return True
+        return cmd_handled
 
-    def service_http(self, args):
+    def service_http(self, args: argparse.Namespace) -> bool:
         """Changes the status of the HTTP/API service.
 
         This function is automatically called by self._execute_cmd() and should not be called manually.
 
         Args:
-            args: An argsparse namespace package.
+            args: User arguments from CLI.
+
+        Returns:
+            True to indicate the command was handled.
         """
+        cmd_handled = True
         action = args.action
         if action == 'start':
             self.apid.start()
         elif action == 'stop':
-            print('Warning: Stopping the HTTP service will prevent external access to commands,'
-                  ' user shell will be required to restart.')
-            if input('Do you wish to continue? Y/n: ') in ('Y', 'y'):
+            print('Warning: Stopping the HTTP service will prevent external access to commands, user shell will be required to restart.')
+            if input('Do you wish to continue? Y/n: ').lower() == 'y':
                 self.apid.shutdown()
-        return True
+        return cmd_handled
 
-    def user_list(self, args):
-        """Lists all users in the database.
-
-        This function is automatically called by self._execute_cmd() and should not be called manually.
-
-        Args:
-            args: An argsparse namespace package.
-        """
-        entries = self.apid.server.authenticator.get_users()
-        if entries:
-            print('User list:\n{}'.format('\n'.join([user['username'] for user in entries])))
-        return True
-
-    def user_add(self, args):
+    def user_add(self, args: argparse.Namespace) -> bool:
         """Adds a new user configuration.
 
         This function is automatically called by self._execute_cmd() and should not be called manually.
 
         Args:
-            args: An argsparse namespace package.
+            args: User arguments from CLI.
+
+        Returns:
+            True to indicate the command was handled.
         """
+        cmd_handled = True
         user = args.username
         if self.apid.server.authenticator.get_user(user):
-            print('{} already exists. To modify user, use: user edit {}'.format(user, user))
-            return True
-
-        password1 = getpass.getpass('Enter password for {}:'.format(user))
-        # TODO add check against simple Passwords
-        password2 = getpass.getpass('Re-enter password for {}:'.format(user))
-
-        if password1 != password2:
-            print('Passwords do not match')
+            print(f'{user} already exists. To modify user, use: user edit {user}')
         else:
-            self.apid.server.authenticator.add_user(user, password1)
-        return True
+            password1 = getpass.getpass(f'Enter password for {user}:')
+            # TODO add check against simple Passwords
+            password2 = getpass.getpass(f'Re-enter password for {user}:')
 
-    def user_remove(self, args):
-        """Removes a user's configuration.
-
-        This function is automatically called by self._execute_cmd() and should not be called manually.
-
-        Args:
-            args: An argsparse namespace package.
-        """
-        user = args.username
-        entry = self.apid.server.authenticator.get_user(user)
-        if not entry:
-            print('User {} does not exist'.format(user))
-            return True
-
-        print('Do you wish to revoke user {}\'s access?'.format(user))
-        if input('Re-enter user\'s name to continue: ') == user:
-            if self.apid.server.authenticator.remove_user(user):
-                print('User {} access revoked.'.format(user))
+            if password1 != password2:
+                print('Passwords do not match')
             else:
-                print('Could not revoke user {} access. Please try again.'.format(user))
-        else:
-            print('User confirmation did not match. Please try again.')
-        return True
+                self.apid.server.authenticator.add_user(user, password1)
+        return cmd_handled
 
-    def user_edit(self, args):
+    def user_edit(self, args: argparse.Namespace) -> bool:
         """Edits a user's configuration.
 
         This function is automatically called by self._execute_cmd() and should not be called manually.
 
         Args:
-            args: An argsparse namespace package.
+            args: User arguments from CLI.
+
+        Returns:
+            True to indicate the command was handled.
         """
+        cmd_handled = True
         user = args.username
         # TODO Allow username change
         entry = self.apid.server.authenticator.get_user(user)
         if not entry:
-            print('User {} does not exist'.format(user))
-            return True
-
-        password1 = getpass.getpass('Enter password for {}:'.format(user))
-        # TODO add check against simple Passwords
-        password2 = getpass.getpass('Re-enter password for {}:'.format(user))
-
-        if password1 != password2:
-            print('Passwords do not match')
+            print(f'User {user} does not exist')
         else:
-            entry[AuthTable.COLUMN_SALT] = self.apid.server.authenticator.generate_salt()
-            entry[AuthTable.COLUMN_PASS] = self.apid.server.authenticator.encrypt(
-                password1, entry[AuthTable.COLUMN_SALT])
-            self.apid.server.authenticator.edit_user(user, entry)
-        return True
+            password1 = getpass.getpass(f'Enter password for {user}:')
+            # TODO add check against simple Passwords
+            password2 = getpass.getpass(f'Re-enter password for {user}:')
+
+            if password1 != password2:
+                print('Passwords do not match')
+            else:
+                entry[AuthTable.column_salt] = self.apid.server.authenticator.generate_salt()
+                entry[AuthTable.column_pass] = self.apid.server.authenticator.encrypt(
+                    password1, entry[AuthTable.column_salt])
+                self.apid.server.authenticator.edit_user(user, entry)
+        return cmd_handled
+
+    def user_list(self, args: argparse.Namespace) -> bool:
+        """Lists all users in the database.
+
+        This function is automatically called by self._execute_cmd() and should not be called manually.
+
+        Args:
+            args: User arguments from CLI.
+
+        Returns:
+            True to indicate the command was handled.
+        """
+        cmd_handled = True
+        entries = self.apid.server.authenticator.get_users()
+        if entries:
+            users = '\n'.join([user['username'] for user in entries])
+            print(f'User list:\n{users}')
+        return cmd_handled
+
+    def user_remove(self, args: argparse.Namespace) -> bool:
+        """Removes a user's configuration.
+
+        This function is automatically called by self._execute_cmd() and should not be called manually.
+
+        Args:
+            args: User arguments from CLI.
+
+        Returns:
+            True to indicate the command was handled.
+        """
+        cmd_handled = True
+        user = args.username
+        entry = self.apid.server.authenticator.get_user(user)
+        if not entry:
+            print(f'User {user} does not exist')
+        else:
+            print(f'Do you wish to revoke user {user}\'s access?')
+            if input('Re-enter user\'s name to continue: ') == user:
+                if self.apid.server.authenticator.remove_user(user):
+                    print(f'User {user} access revoked.')
+                else:
+                    print(f'Could not revoke user {user} access. Please try again.')
+            else:
+                print('User confirmation did not match. Please try again.')
+        return cmd_handled

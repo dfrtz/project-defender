@@ -1,17 +1,14 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 
 import glob
 import os
 import setuptools
 
 MODULE_DIR = os.path.dirname(__file__)
-PACKAGES = setuptools.find_packages(MODULE_DIR, include=['defender*'], exclude=['*test', '*benchmarks'])
 REQUIREMENTS_FILE = os.path.join(MODULE_DIR, 'requirements.txt')
-with open(REQUIREMENTS_FILE, 'rt') as requirements_file:
-    REQUIREMENTS = [requirement.strip() for requirement in requirements_file.readlines()]
 
 
-def _find_files(directory):
+def _find_files(directory: str) -> list:
     """Locate non-python package files in compatible format with setuptools."""
     paths = []
     for (path, _, filenames) in os.walk(directory):
@@ -20,7 +17,14 @@ def _find_files(directory):
     return paths
 
 
-def _find_scripts(directory):
+def _find_requirements(file: str) -> list:
+    """Import requirements from an external file in compatible format with setuptools."""
+    with open(file, 'rt') as requirements_file:
+        requirements = [requirement.strip() for requirement in requirements_file.readlines()]
+    return requirements
+
+
+def _find_scripts(directory: str) -> list:
     """Locate scripts and provide endpoint names compatible with setuptools."""
     scripts = []
     for abs_path in glob.glob(os.path.join(MODULE_DIR, f'{directory}/*.py')):
@@ -30,13 +34,13 @@ def _find_scripts(directory):
     return scripts
 
 
-ENTRY_POINTS = _find_scripts('defender/scripts')
 PACKAGE_DATA = {
     '': [
         *_find_files('defender/demodata'),
         *_find_files('defender/html')
     ]
 }
+PACKAGES = setuptools.find_packages(MODULE_DIR, include=['defender*'], exclude=['*test', '*benchmarks'])
 
 
 setuptools.setup(
@@ -46,12 +50,14 @@ setuptools.setup(
     license='Apache Software License',
     author='David Fritz',
     tests_require=['pytest'],
-    install_requires=REQUIREMENTS,
+    install_requires=_find_requirements(REQUIREMENTS_FILE),
     description='Security and Defense Device Manager with REST API',
     packages=['defender'],
     platforms='Linux',
-    python_requires='>=3.5',
-    entry_points={'console_scripts': ENTRY_POINTS},
+    python_requires='>=3.6',
+    entry_points={
+        'console_scripts': _find_scripts('defender/scripts')
+    },
     classifiers=[
         'Programming Language :: Python',
         'Development Status :: 4 - Beta',
@@ -65,3 +71,4 @@ setuptools.setup(
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ],
 )
+

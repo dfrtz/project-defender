@@ -12,6 +12,10 @@ import socket
 import ssl
 import threading
 
+from typing import Any
+from typing import Iterable
+from typing import Tuple
+
 from http.server import BaseHTTPRequestHandler
 from socketserver import ThreadingTCPServer
 
@@ -25,47 +29,31 @@ class ApiService(object):
         logger: A logger instance where all messages will be stored.
     """
 
-    def __init__(self, config):
+    def __init__(self, config: Any) -> None:
+        """Initializes the service with a basic configuration and logger."""
         self.config = config
         self.server = None
         self.logger = self.setup_logger()
 
-    def setup_logger(self):
-        """Creates a logger to record the lifecycle of the server.
-
-        Returns:
-            A logger instance with custom formatting for the server.
-        """
-        logger = logging.getLogger(__name__)
-        if not len(logger.handlers):
-            formatter = logging.Formatter(fmt='{asctime} - {levelname} - {message}', datefmt='%Y-%m-%dT%H:%M:%S.%s',
-                                          style='{')
-            file_handler = logging.handlers.RotatingFileHandler(self.config.log, maxBytes=10000000, backupCount=5,
-                                                                encoding='UTF-8')
-            file_handler.setFormatter(formatter)
-            logger.addHandler(file_handler)
-        logger.setLevel(logging.INFO)
-        return logger
-
-    def log_message(self, message, external=False, level=logging.INFO):
+    def log_message(self, message: str, external: bool = False, level: int = logging.INFO) -> None:
         """Writes a message to the logs and standard output where applicable.
 
         Args:
-            message: A string to write to the logger and user.
-            external: A boolean to control whether the message should be sent to standard (external) output.
-            level: A logging module level to control the type of message recorded.
+            message: Text to write to the logger and user.
+            external: Whether the message should be sent to standard (external) output.
+            level: Logging level used to control the type of message recorded.
         """
         self.logger.log(level, message)
         if external:
             print(message)
 
-    def set_debug(self, enable=False):
+    def set_debug(self, enable: bool = False) -> None:
         """Enables or disables debug output from the server.
 
         This method is disruptive while the setting is being applied.
 
         Args:
-            enable: A boolean representing whether debug mode should be enabled.
+            enable: Whether debug mode should be enabled.
         """
         self.shutdown()
         if enable:
@@ -78,7 +66,42 @@ class ApiService(object):
             self.logger.setLevel(logging.INFO)
         self.start()
 
-    def start(self):
+    def setup_logger(self) -> logging.Logger:
+        """Creates a logger to record the lifecycle of the server.
+
+        Returns:
+            A logger instance with custom formatting for the server.
+        """
+        logger = logging.getLogger(__name__)
+        if not len(logger.handlers):
+            formatter = logging.Formatter(
+                fmt='{asctime} - {levelname} - {message}',
+                datefmt='%Y-%m-%dT%H:%M:%S.%s',
+                style='{'
+            )
+            file_handler = logging.handlers.RotatingFileHandler(
+                self.config.log,
+                maxBytes=10000000,
+                backupCount=5,
+                encoding='UTF-8'
+            )
+            file_handler.setFormatter(formatter)
+            logger.addHandler(file_handler)
+        logger.setLevel(logging.INFO)
+        return logger
+
+    def shutdown(self) -> None:
+        """Stops the TCPServer and prevents serving new HTTP requests."""
+        if self.server is not None:
+            self.log_message('HTTP service shutting down', True)
+            self.server.socket.close()
+            self.server.shutdown()
+            self.server = None
+            self.log_message('HTTP service offline', True)
+        else:
+            self.log_message('HTTP service offline. Aborting repeat shutdown.', True)
+
+    def start(self) -> None:
         """Creates the TCPServer thread to service new HTTP requests."""
         if self.server is None:
             self.log_message('HTTP service starting', True)
@@ -94,43 +117,37 @@ class ApiService(object):
             if self.config.secure:
                 if pathlib.Path(self.config.secure).absolute().is_file():
                     # TODO: Validate certificate
-                    self.log_message('HTTP service loading SSL cert: {}'.format(self.config.secure), True)
-                    self.server.socket = ssl.wrap_socket(self.server.socket, keyfile=self.config.key,
-                                                         certfile=self.config.secure, server_side=True,
-                                                         ssl_version=ssl.PROTOCOL_TLSv1_2)
+                    self.log_message(f'HTTP service loading SSL cert: {self.config.secure}', True)
+                    self.server.socket = ssl.wrap_socket(
+                        self.server.socket,
+                        keyfile=self.config.key,
+                        certfile=self.config.secure,
+                        server_side=True,
+                        ssl_version=ssl.PROTOCOL_TLSv1_2
+                    )
                     cert_loaded = True
             # Start HTTPD in new thread to prevent blocking user input
             threading.Thread(target=self.server.serve_forever).start()
 
-            self.log_message('HTTP service listening on {}://{}:{}'.format(
-                ('https' if cert_loaded else 'http'), self.config.host, self.config.port), True)
+            protocol = 'https' if cert_loaded else 'http'
+            self.log_message(f'HTTP service listening on {protocol}://{self.config.host}:{self.config.port}', True)
         else:
             self.log_message('HTTP service cannot start, already listening', True)
-
-    def shutdown(self):
-        """Stops the TCPServer and prevents serving new HTTP requests."""
-        if self.server is not None:
-            self.log_message('HTTP service shutting down', True)
-            self.server.socket.close()
-            self.server.shutdown()
-            self.server = None
-            self.log_message('HTTP service offline', True)
-        else:
-            self.log_message('HTTP service offline. Aborting repeat shutdown.', True)
 
 
 class ApiHandler(BaseHTTPRequestHandler):
     """Base API request handler to authenticate users and service REST calls over HTTP.
 
     Attributes:
-        api_options: An iterable of strings containing the supported types of HTTP options such as GET, PUT, etc.
-        api_versions: An iterable of strings containing the supported API versions uch as 1.0, 1.1, etc.
-        api_headers: An iterable of strings representing valid HTTP headers.
-        api_realm: A string to use as the Realm for basic authentication requests.
-        file_exts: An iterable of strings representing valid file extensions that can be requested.
+        api_options: Supported types of HTTP options such as GET, PUT, etc.
+        api_versions: Supported API versions uch as 1.0, 1.1, etc.
+        api_headers: Valid HTTP headers.
+        api_realm: The realm for basic authentication requests.
+        file_exts: Valid file extensions that can be requested.
     """
 
-    def __init__(self, *args):
+    def __init__(self, *args: Any) -> None:
+        """Setup the custom values for this instance before starting to service requests."""
         self.api_options = ['GET']
         self.api_versions = ['1.0']
         self.api_headers = ['Content-Type', 'Content-Length']
@@ -143,20 +160,7 @@ class ApiHandler(BaseHTTPRequestHandler):
         # Init must be last, or response will be handled without user configuration
         super(ApiHandler, self).__init__(*args)
 
-    def setup_api(self):
-        """Adds additional API configurations to the handler's base support functions.
-
-        It is recommend to only extend the API options instead of assign new, unless attempting to restrict default
-        access.
-        """
-        pass
-
-    def log_message(self, template, *args):
-        """Overrides parent logging function from base HTTP request handler to prevent standard out flooding."""
-        # Currently no logging individual requests is performed, just absorb the output.
-        pass
-
-    def authenticate(self):
+    def authenticate(self) -> bool:
         """Authenticates the request's credentials and sends a request for authentication if none are found.
 
         Returns:
@@ -171,7 +175,7 @@ class ApiHandler(BaseHTTPRequestHandler):
             self.do_AUTHHEAD()
             return False
 
-        # Split header into [Basic] and [username:password] to verify if authentication information was provided
+        # Split header into [Basic] and [username:password] to verify if authentication information was provided.
         headers = header.split()
         if len(headers) < 2 or headers[0] != 'Basic':
             self.do_AUTHHEAD()
@@ -186,8 +190,46 @@ class ApiHandler(BaseHTTPRequestHandler):
             self.do_AUTHHEAD()
         return authenticated
 
-    # noinspection PyPep8Naming
-    def do_OPTIONS(self):
+    def do_AUTHHEAD(self) -> None:
+        """Triggers a basic authentication request from the client using the configured realm."""
+        self.send_response(401, self.responses[401][1])
+        self.send_header('WWW-Authenticate', f'Basic realm="{self.api_realm}"')
+        self.send_header('Content-Type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b'Authentication Failed')
+
+    def do_GET(self) -> None:
+        """Authenticates a user and serves requests for local files, or forwards API calls."""
+        if self.path.startswith('/api'):
+            args = re.sub('/api(/)?', '', self.path).rstrip('/').split('/')
+
+            if len(args) < 2 or args[0] == '':
+                # Bypass authentication if only checking versions
+                self.write_response(
+                    200,
+                    [('Access-Control-Allow-Origin', '*'), ('Content-Type', 'application/json')],
+                    f'{{"versions": {json.dumps(self.api_versions)}}}'
+                )
+                return
+
+            if self.authenticate():
+                self.serve_api()
+        else:
+            if self.authenticate():
+                file_path = self.path
+
+                if file_path == '/':
+                    file_path = f'{self.server.config.web_root}/index.html'
+                else:
+                    file_path = self.server.config.web_root + file_path
+
+                if os.path.abspath(file_path).startswith(self.server.config.web_root):
+                    # Only serve files under application root or user specified location
+                    self.serve_file(file_path)
+                else:
+                    self.send_error(404, self.responses[404][1])
+
+    def do_OPTIONS(self) -> None:
         """Returns a response to the client containing all valid API methods and headers."""
         self.send_response(200, "ok")
         self.send_header('Access-Control-Allow-Origin', '*')
@@ -195,72 +237,28 @@ class ApiHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Headers', ','.join(self.api_headers))
         self.end_headers()
 
-    # noinspection PyPep8Naming
-    def do_AUTHHEAD(self):
-        """Triggers a basic authentication request from the client using the configured realm."""
-        self.send_response(401, self.responses[401][1])
-        self.send_header('WWW-Authenticate', 'Basic realm="{}"'.format(self.api_realm))
-        self.send_header('Content-Type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b'Authentication Failed')
-
-    # noinspection PyPep8Naming
-    def do_GET(self):
-        """Authenticates a user and serves requests for local files, or forwards API calls."""
-        if self.path.startswith('/api'):
-            args = re.sub('/api(/)?', '', self.path).rstrip('/').split('/')
-
-            if len(args) < 2 or args[0] == '':
-                # Bypass authentication if only checking versions
-                self.write_response(200,
-                                    [('Access-Control-Allow-Origin', '*'), ('Content-Type', 'application/json')],
-                                    '{{"versions": {}}}'.format(json.dumps(self.api_versions)))
-                return
-
-            if not self.authenticate():
-                return
-
-            self.serve_api()
-        else:
-            if not self.authenticate():
-                return
-
-            file_path = self.path
-
-            if file_path == '/':
-                file_path = '{}/index.html'.format(self.server.config.web_root)
-            else:
-                file_path = self.server.config.web_root + file_path
-
-            if os.path.abspath(file_path).startswith(self.server.config.web_root):
-                # Only serve files under application root or user specified location
-                self.serve_file(file_path)
-            else:
-                self.send_error(404, self.responses[404][1])
-
-    # noinspection PyPep8Naming
-    def do_POST(self):
+    def do_POST(self) -> None:
         """Authenticates a user and forwards API POST requests if user session is valid."""
-        if not self.authenticate():
-            return
-        if self.path.startswith('/api'):
-            self.serve_api()
-        else:
-            self.send_error(400, self.responses[400][1])
+        if self.authenticate():
+            if self.path.startswith('/api'):
+                self.serve_api()
+            else:
+                self.send_error(400, self.responses[400][1])
 
-    # noinspection PyPep8Naming
-    def do_PUT(self):
+    def do_PUT(self) -> None:
         """Authenticates a user and forwards API PUT requests if user session is valid."""
-        if not self.authenticate():
-            return
-        if self.path.startswith('/api'):
-            self.serve_api()
-        else:
-            self.send_error(400, self.responses[400][1])
+        if self.authenticate():
+            if self.path.startswith('/api'):
+                self.serve_api()
+            else:
+                self.send_error(400, self.responses[400][1])
 
-    def serve_api(self):
-        """Services the root request for all API access by calling child functions based on the HTTP request's path and
-        command type.
+    def log_message(self, template: str, *args: Any) -> None:
+        """Overrides parent logging function from base HTTP request handler to prevent standard out flooding."""
+        # Currently no logging of individual requests is performed, just absorb the output.
+
+    def serve_api(self) -> None:
+        """Services the root request for all API access by calling child functions based on the path and command type.
 
         This method will send a list of valid API versions if one is not specified.
 
@@ -285,25 +283,28 @@ class ApiHandler(BaseHTTPRequestHandler):
         if self.command in self.api_options:
             version = args[0]
             if version in self.api_versions:
-                method_name = '{}_{}'.format(self.command.lower(), args[1].upper())
+                method_name = f'{self.command.lower()}_{args[1].upper()}'
                 if hasattr(self, method_name):
                     method = getattr(self, method_name)
                     method(args, rdata)
                     return
             else:
-                self.write_response(400, [('Access-Control-Allow-Origin', '*'), ('Content-Type', 'application/json')],
-                                    '{{"versions": {}}}'.format(json.dumps(self.api_versions)))
+                self.write_response(
+                    400,
+                    [('Access-Control-Allow-Origin', '*'), ('Content-Type', 'application/json')],
+                    f'{{"versions": {json.dumps(self.api_versions)}}}'
+                )
                 return
         self.send_error(400, self.responses[400][1])
 
-    def serve_file(self, file_path):
+    def serve_file(self, file_path: str) -> None:
         """Sends a data file as binary to preserve contents, and includes content-type header based on file extension.
 
         No validation is performed against relative filesystem paths. If additional security is needed, the path should
         be expanded and validated prior to calling this method.
 
         Args:
-            file_path: An string representing a local filesystem path.
+            file_path: A local filesystem path.
         """
         try:
             if file_path.endswith(self.file_exts):
@@ -331,13 +332,20 @@ class ApiHandler(BaseHTTPRequestHandler):
         except IOError:
             self.send_error(404, self.responses[404][1])
 
-    def write_response(self, response_code, headers, data):
+    def setup_api(self) -> None:
+        """Adds additional API configurations to the handler's base support functions.
+
+        It is recommend to only extend the API options instead of assign new, unless attempting to restrict default
+        access.
+        """
+
+    def write_response(self, response_code: int, headers: Iterable[Tuple[str, str]], data: str) -> None:
         """Writes an HTTP response back to the socket.
 
         Args:
-            response_code: An integer representing a valid HTTP response code.
-            headers: An iterable of tuples containing HTTP header/key value pairs.
-            data: A string that will be encoded into bytes as the data payload.
+            response_code: Valid HTTP response code.
+            headers: HTTP header/key value pairs.
+            data: Text that will be encoded into bytes as the data payload.
         """
         self.send_response(response_code)
         for header in headers:
@@ -354,59 +362,59 @@ class ApiServer(ThreadingTCPServer, metaclass=abc.ABCMeta):
         authenticator: An object with authenticate() method to validate user access requests.
     """
 
-    def __init__(self, config, bind_and_activate=True):
+    def __init__(self, config: Any, bind_and_activate: bool = True) -> None:
+        """Setup the server with user provided config and subclass' authenticator."""
         super(ApiServer, self).__init__((config.host, config.port), config.request_handler, bind_and_activate)
         self.config = config
         self.authenticator = self._init_authenticator()
 
     @abc.abstractmethod
-    def _init_authenticator(self):
+    def _init_authenticator(self) -> Any:
         """Initializes an object capable of authentication.
 
         Returns:
             An object with an authenticate() method.
         """
-        pass
 
-    def authenticate(self, user, password):
+    def authenticate(self, user: str, password: str) -> bool:
         """Validate if a user has access to the server.
 
         Args:
-            user: A string representing a username.
-            password: A string representing the password for the user.
+            user: Text representation of username.
+            password: Text representation of the password for the user.
 
         Returns:
             True if the user passes authentication checks, False if checks fail or no authenticator is found.
         """
+        result = False
         if hasattr(self.authenticator, 'authenticate'):
-            return self.authenticator.authenticate(user, password)
-        else:
-            return False
+            result = self.authenticator.authenticate(user, password)
+        return result
 
 
 class ApiConfig(object):
     """Configuration information to control the flow of HTTP requests for an API based server.
 
     Attributes:
-        web_root: A string representing the base filesystem path to serve files.
-        log: A string representing the filesystem path to a file to save log lines.
-        secure: A string representing the filesystem path to an SSL certificate file to enable HTTPS access.
-        key: A string representing the filesystem path to the SSL certificate key file.
+        web_root: The base filesystem path to serve files.
+        log: The filesystem path to a file to save log lines.
+        secure: The filesystem path to an SSL certificate file to enable HTTPS access.
+        key: The filesystem path to the SSL certificate key file.
         host: An IP address string to bind the service.
-        port: An address port integer to bind the service.
-        debug: A boolean to enable debug output for requests.
-        authenticator: A string representing the filesystem path to the SSL certificate key file.
+        port: An address port to bind the service.
+        debug: Whether to enable debug output for requests.
+        authenticator: The filesystem path to the SSL certificate key file.
         thread_handler: An ApiServer class to use when starting a server.
         request_handler: And ApiHandler class to use when processing requests.
     """
 
-    def __init__(self, user_config=None, thread_handler=ApiServer, request_handler=ApiHandler):
+    def __init__(self, user_config: dict = None, thread_handler: type = ApiServer, request_handler: type = ApiHandler) -> None:
         """Initializes attributes from a user specified configuration object or defaults.
 
         Args:
-            user_config: Dictionary containing user predefined values for initialization.
-            thread_handler: An ApiServer class to use when starting a server.
-            request_handler: And ApiHandler class to use when processing requests.
+            user_config: User predefined values for initialization.
+            thread_handler: Server to use in each handler thread.
+            request_handler: Handler to use when processing requests.
         """
         if not user_config:
             user_config = {}
