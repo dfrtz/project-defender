@@ -12,6 +12,7 @@
   },
   "media": {
     "video": {
+      "enabled": true,
       "device": 0,
       "width": 640,
       "height": 480,
@@ -19,6 +20,7 @@
       "quality": 90
     },
     "audio": {
+      "enabled": true,
       "device": "USB Device 0x46d:0x825",
       "channels": 1,
       "rate": 32000,

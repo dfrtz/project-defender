@@ -78,6 +78,7 @@ class VideoConfig(object):
         """
         if not config:
             config = {}
+        self.enabled = config.get('enabled', False)
         self.device = config.get('device', VideoConfig.DEVICE)
         self.width = config.get('width', VideoConfig.WIDTH)
         self.height = config.get('height', VideoConfig.HEIGHT)
@@ -99,6 +100,18 @@ class VideoStream(LogService):
         self._stop_event = threading.Event()
         self._stop_event.set()
         self.config = config
+
+    @staticmethod
+    def list_devices():
+        """Provide a list of all available video devices indexes to user."""
+        print('Video Devices:')
+        arr = []
+        for index in range(50):
+            stream = cv2.VideoCapture(index)
+            if stream.isOpened():
+                arr.append(index)
+                stream.release()
+        print(arr)
 
     def start(self) -> Any:
         """Creates the background capture thread to read images from the input asynchronously.
@@ -182,6 +195,7 @@ class AudioConfig(object):
             config: User predefined values for initialization."""
         if not config:
             config = {}
+        self.enabled = config.get('enabled', False)
         self.device = config.get('device', AudioConfig.DEVICE)
         self.chunk = config.get('chunk', AudioConfig.CHUNK)
         self.format = AudioConfig.FORMAT
@@ -449,8 +463,8 @@ class MediaService(LogService):
         if not self._stop_event.is_set():
             self._stop_event.set()
             self.log_message('Media service shutting down', True)
-            self.video_stream.stop()
-            self.audio_stream.stop()
+            self.stop_video()
+            self.stop_audio()
             self.log_message('Media service offline', True)
         else:
             self.log_message('Media service offline. Aborting repeat shutdown.', True)
@@ -459,13 +473,48 @@ class MediaService(LogService):
         """Creates the audio and video server threads to service new handler requests."""
         if self._stop_event.is_set():
             self._stop_event.clear()
-            self.log_message('Media service starting', True)
+
+        self.log_message('Media service starting', True)
+        self.start_video()
+        self.start_audio()
+        self.log_message('Media service started.')
+
+    def start_audio(self) -> None:
+        """Creates the audio server thread to service new handler requests."""
+        if self.config.audio.enabled:
+            self.audio_stream = AudioStream(self.config.audio, self.logger).start()
+        else:
+            self.log_message(
+                f'Skipping audio. Enabled: {self.config.audio.enabled} Running: {self.audio_stream is not None}',
+                True
+            )
+
+    def start_video(self) -> None:
+        """Creates the video server thread to service new handler requests."""
+        if self.config.video.enabled and self.video_stream is None:
             self.video_stream = VideoStream(self.config.video, self.logger).start()
             self.hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
-            self.audio_stream = AudioStream(self.config.audio, self.logger).start()
-            self.log_message('Media service listening to video and audio.')
         else:
-            self.log_message('Media service cannot start, streams already running.', True)
+            self.log_message(
+                f'Skipping video. Enabled: {self.config.video.enabled} Running: {self.video_stream is not None}',
+                True
+            )
+
+    def stop_audio(self) -> None:
+        """Stops the audio server thread to prevent handling new requests."""
+        if self.audio_stream is not None:
+            self.audio_stream.stop()
+            self.audio_stream = None
+        else:
+            self.log_message('Audio not running, skipping shutdown.', True)
+
+    def stop_video(self) -> None:
+        """Stops the video server thread to prevent handling new requests."""
+        if self.video_stream is not None:
+            self.video_stream.stop()
+            self.video_stream = None
+        else:
+            self.log_message('Video not running, skipping shutdown.', True)
 
     @staticmethod
     def write_image(handler: Any, image: bytes) -> None:

@@ -59,33 +59,39 @@ class DefenderHandler(http.ApiHandler):
         elif config.mode in {MODE_CLIENT, MODE_BOTH}:
             # Running process is also a media server. Provide access to video/audio endpoints.
             if path.endswith('/video'):
-                self.send_response(200)
-                self.send_header('Connection', 'close')
-                self.send_header('Pragma', 'no-store, no-cache')
-                self.send_header('Cache-Control',
-                                 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-                self.send_header('Expires', '-1')
-                self.send_header('Server', 'Python-MJPG-Streamer/0.1')
-                self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=--jpgbound')
-                self.end_headers()
-                try:
-                    config.mediad.send_cv_stream(self)
-                except BrokenPipeError:
-                    self.log_message('Broken Pipe')
+                if config.mediad.video_stream is not None:
+                    self.send_response(200)
+                    self.send_header('Connection', 'close')
+                    self.send_header('Pragma', 'no-store, no-cache')
+                    self.send_header('Cache-Control',
+                                     'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
+                    self.send_header('Expires', '-1')
+                    self.send_header('Server', 'Python-MJPG-Streamer/0.1')
+                    self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=--jpgbound')
+                    self.end_headers()
+                    try:
+                        config.mediad.send_cv_stream(self)
+                    except BrokenPipeError:
+                        self.log_message('Broken Pipe')
+                else:
+                    self.send_response(503)
             elif path.endswith('/audio'):
-                self.send_response(200)
-                self.send_header('Connection', 'close')
-                self.send_header('Pragma', 'no-store, no-cache')
-                self.send_header('Cache-Control',
-                                 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-                self.send_header('Expires', '-1')
-                self.send_header('Server', 'Python-WAV-Streamer/0.1')
-                self.send_header('Content-Type', 'audio/x-wav')
-                self.end_headers()
-                try:
-                    config.mediad.send_pyaudio_stream(self)
-                except BrokenPipeError:
-                    self.log_message('Audio endpoint encountered broken pipe')
+                if config.mediad.audio_stream is not None:
+                    self.send_response(200)
+                    self.send_header('Connection', 'close')
+                    self.send_header('Pragma', 'no-store, no-cache')
+                    self.send_header('Cache-Control',
+                                     'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
+                    self.send_header('Expires', '-1')
+                    self.send_header('Server', 'Python-WAV-Streamer/0.1')
+                    self.send_header('Content-Type', 'audio/x-wav')
+                    self.end_headers()
+                    try:
+                        config.mediad.send_pyaudio_stream(self)
+                    except BrokenPipeError:
+                        self.log_message('Audio endpoint encountered broken pipe')
+                else:
+                    self.send_response(503)
         else:
             super(DefenderHandler, self).serve_file(path)
 
@@ -182,6 +188,7 @@ def main() -> None:
             from defender.lib import media
             if args.list_devices:
                 media.AudioStream.list_devices()
+                media.VideoStream.list_devices()
                 return
             media_config = media.MediaConfig(config.get('media', None))
             media_service = media.MediaService(media_config)

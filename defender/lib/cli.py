@@ -55,8 +55,12 @@ class HostShell(shells.BaseShell):
         # Service subparsers
         subparsers_service = parser_service.add_subparsers(title='Services', dest='branch')
         subparsers_service.required = True
+        subparser_service_video = subparsers_service.add_parser('audio', help='Audio service')
+        subparser_service_video.add_argument('action', help='Audio Action', action='store', choices=['start', 'stop'])
         subparser_service_http = subparsers_service.add_parser('http', help='HTTP/API service')
-        subparser_service_http.add_argument('action', help='Service Action', action='store', choices=['start', 'stop'])
+        subparser_service_http.add_argument('action', help='HTTP Action', action='store', choices=['start', 'stop'])
+        subparser_service_video = subparsers_service.add_parser('video', help='Video service')
+        subparser_service_video.add_argument('action', help='Video Action', action='store', choices=['start', 'stop'])
 
         # User subparsers
         subparsers_user = parser_user.add_subparsers(title='Actions', dest='branch')
@@ -129,6 +133,25 @@ class HostShell(shells.BaseShell):
                 self.apid.set_debug(False)
         return cmd_handled
 
+    def service_audio(self, args: argparse.Namespace) -> bool:
+        """Changes the status of the Audio service.
+
+        This function is automatically called by self._execute_cmd() and should not be called manually.
+
+        Args:
+            args: User arguments from CLI.
+
+        Returns:
+            True to indicate the command was handled.
+        """
+        cmd_handled = True
+        action = args.action
+        if action == 'start':
+            self.mediad.start_audio()
+        elif action == 'stop':
+            self.mediad.stop_audio()
+        return cmd_handled
+
     def service_http(self, args: argparse.Namespace) -> bool:
         """Changes the status of the HTTP/API service.
 
@@ -148,6 +171,25 @@ class HostShell(shells.BaseShell):
             print('Warning: Stopping the HTTP service will prevent external access to commands, user shell will be required to restart.')
             if input('Do you wish to continue? Y/n: ').lower() == 'y':
                 self.apid.shutdown()
+        return cmd_handled
+
+    def service_video(self, args: argparse.Namespace) -> bool:
+        """Changes the status of the Video service.
+
+        This function is automatically called by self._execute_cmd() and should not be called manually.
+
+        Args:
+            args: User arguments from CLI.
+
+        Returns:
+            True to indicate the command was handled.
+        """
+        cmd_handled = True
+        action = args.action
+        if action == 'start':
+            self.mediad.start_video()
+        elif action == 'stop':
+            self.mediad.stop_video()
         return cmd_handled
 
     def user_add(self, args: argparse.Namespace) -> bool:
