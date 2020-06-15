@@ -17,14 +17,18 @@ from io import StringIO
 from typing import Any
 from typing import Tuple
 
-import cv2
-import pyaudio
+try:
+    import cv2
+    import pyaudio
 
-from PIL import Image
+    from PIL import Image
+except ImportError as error:
+    logging.error(f'Unable to import media module; correct media dependencies or change mode to "server": {error}')
 
 # Error handler taken from: alsa-lib.git include/error.h
 # typedef void (*snd_lib_error_handler_t)(const char *file, int line, const char *function, int err, const char *fmt)
 ALSA_ERR_HANDLER = ctypes.CFUNCTYPE(None, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p)
+DEFAULT_BOUNDARY = 'jpgboundary'
 CHARS = string.ascii_uppercase + string.ascii_lowercase + string.digits
 NO_STREAM = -1
 
@@ -97,6 +101,7 @@ class VideoStream(LogService):
         """Initialize the stream with custom config and null image."""
         super(VideoStream, self).__init__(logger)
         self._image = None
+        self._last_read = None
         self._stop_event = threading.Event()
         self._stop_event.set()
         self.config = config
@@ -136,8 +141,10 @@ class VideoStream(LogService):
         stream = None
         while not self._stop_event.is_set():
             stream = cv2.VideoCapture(self.config.device)
-            stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.width)
-            stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.height)
+            if self.config.width:
+                stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.config.width)
+            if self.config.height:
+                stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.config.height)
             if stream.isOpened():
                 break
             self.log_message(f'Video stream could not open, retrying in {heartbeat_interval} seconds.', True)
@@ -150,18 +157,19 @@ class VideoStream(LogService):
                 if captured:
                     # Update the internal image, this will be sent to the streams.
                     self._image = image
+                    self._last_read = time.time()
             # Release the stream and saved image to free up memory.
             stream.release()
             self._image = None
             self.log_message('Video stream stopped.', True)
 
-    def read(self) -> bytes:
+    def read(self) -> Tuple[bytes, int]:
         """Provides the most recently captured image.
 
         Returns:
-            A bytes like object representing the most recently captured image, or None if no image is available.
+            A bytes like object representing the most recently captured image, and time of capture in nanoseconds.
         """
-        return self._image
+        return self._image, self._last_read
 
     def stop(self) -> None:
         """Signals the background capture thread to stop reading images."""
@@ -406,6 +414,7 @@ class MediaConfig(object):
         self.audio = AudioConfig(config.get('audio', None))
         self.log = os.path.abspath(os.path.expanduser(config.get('log', 'media.log')))
         self.debug = False
+        self.boundary = config.get('boundary', DEFAULT_BOUNDARY)
 
 
 class MediaService(LogService):
@@ -429,6 +438,9 @@ class MediaService(LogService):
         self._stop_event = threading.Event()
         self._stop_event.set()
         self.setup_logger(config.log)
+
+        # Cache the byte string for image boundaries to prevent recreating every frame.
+        self._image_boundary = f'\r\n--{self.config.boundary}\r\n'.encode()
 
     def set_debug(self, enabled: bool = False) -> None:
         """Enables or disables debug output from the server.
@@ -516,20 +528,24 @@ class MediaService(LogService):
         else:
             self.log_message('Video not running, skipping shutdown.', True)
 
-    @staticmethod
-    def write_image(handler: Any, image: bytes) -> None:
+    def write_image(self, handler: Any, image: bytes) -> None:
         """Writes a single image to an external handler.
 
         Args:
             handler: An external service handler where the image will be relayed.
             image: A bytes like object representing an image.
         """
-        handler.wfile.write(b'--jpgbound\r\n')
-        handler.send_header('X-Timestamp', time.time())
-        handler.send_header('Content-Length', len(image))
-        handler.send_header('Content-Type', 'image/jpeg')
+        handler.wfile.write(self._image_boundary)
+        handler.send_header('content-type', 'image/jpeg')
+        handler.send_header('content-length', len(image))
+        handler.send_header('x-timestamp', time.time())
         handler.end_headers()
-        handler.wfile.write(image)
+        try:
+            handler.wfile.write(image)
+        except ConnectionResetError as error:
+            # Only record errors that are not the result of a client closing the connection mid-write (104).
+            if error.errno != 104:
+                self.log_message(f'Connection reset {error}', True)
 
     def send_cv_detection_stream(self, handler: Any) -> None:
         """Opens a continuous stream to send Computer Vision processed images with various object detection models.
@@ -540,7 +556,7 @@ class MediaService(LogService):
         interval = 1 / self.config.video.framerate
         quality = self.config.video.quality
         while not self._stop_event.is_set():
-            frame = self.video_stream.read()
+            frame, timestamp = self.video_stream.read()
             if frame is not None:
                 rects, weights = self.hog.detectMultiScale(frame, winStride=(4, 4), padding=(8, 8), scale=1.05)
                 for x, y, w, h in rects:
@@ -561,7 +577,7 @@ class MediaService(LogService):
         """
         interval = 1 / self.config.video.framerate
         while not self._stop_event.is_set():
-            frame = self.video_stream.read()
+            frame, timestamp = self.video_stream.read()
             if frame is not None:
                 # Image must be converted into file like object to allow sending.
                 tmp_file = StringIO()
@@ -579,12 +595,20 @@ class MediaService(LogService):
         """
         interval = 1 / self.config.video.framerate
         quality = self.config.video.quality
-        while not self._stop_event.is_set():
+        prev_timestamp = 0
+        skipped_frames = 0
+        max_skippable = self.config.video.framerate * 60
+        while not self._stop_event.is_set() and skipped_frames < max_skippable:
             try:
-                frame = self.video_stream.read()
-                if frame is not None:
-                    ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
-                    self.write_image(handler, jpeg.tobytes())
+                frame, timestamp = self.video_stream.read()
+                if timestamp != prev_timestamp:
+                    skipped_frames = 0
+                    if frame is not None:
+                        ret, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, quality])
+                        self.write_image(handler, jpeg.tobytes())
+                        prev_timestamp = timestamp
+                else:
+                    skipped_frames += 1
             except cv2.error:
                 # Skip frame if an error is encountered.
                 pass

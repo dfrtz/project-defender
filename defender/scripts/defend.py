@@ -4,9 +4,11 @@
 
 import argparse
 import json
+import time
 
 from defender.lib import cli
 from defender.lib import http
+from defender.lib import media
 from defender.lib import secure
 
 MODE_BOTH = 0
@@ -61,13 +63,13 @@ class DefenderHandler(http.ApiHandler):
             if path.endswith('/video'):
                 if config.mediad.video_stream is not None:
                     self.send_response(200)
-                    self.send_header('Connection', 'close')
-                    self.send_header('Pragma', 'no-store, no-cache')
-                    self.send_header('Cache-Control',
-                                     'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-                    self.send_header('Expires', '-1')
-                    self.send_header('Server', 'Python-MJPG-Streamer/0.1')
-                    self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=--jpgbound')
+                    self.send_header('cache-control', 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
+                    self.send_header('connection', 'close')
+                    self.send_header('content-type', f'multipart/x-mixed-replace; boundary={config.mediad.config.boundary}')
+                    self.send_header('expires', '-1')
+                    self.send_header('pragma', 'no-store, no-cache')
+                    self.send_header('server', 'python-mjpeg-streamer/0.1')
+                    self.send_header('x-starttime', time.time())
                     self.end_headers()
                     try:
                         config.mediad.send_cv_stream(self)
@@ -78,13 +80,12 @@ class DefenderHandler(http.ApiHandler):
             elif path.endswith('/audio'):
                 if config.mediad.audio_stream is not None:
                     self.send_response(200)
-                    self.send_header('Connection', 'close')
-                    self.send_header('Pragma', 'no-store, no-cache')
-                    self.send_header('Cache-Control',
-                                     'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
-                    self.send_header('Expires', '-1')
-                    self.send_header('Server', 'Python-WAV-Streamer/0.1')
-                    self.send_header('Content-Type', 'audio/x-wav')
+                    self.send_header('cache-control', 'no-store, no-cache, must-revalidate, pre-check=0, post-check=0, max-age=0')
+                    self.send_header('connection', 'close')
+                    self.send_header('content-type', 'audio/x-wav')
+                    self.send_header('expires', '-1')
+                    self.send_header('pragma', 'no-store, no-cache')
+                    self.send_header('server', 'python-wav-streamer/0.1')
                     self.end_headers()
                     try:
                         config.mediad.send_pyaudio_stream(self)
@@ -184,18 +185,12 @@ def main() -> None:
 
     # Attempt to load the media libraries if this client is in a mode expected to use OpenCV.
     if api_config.mode in {MODE_CLIENT, MODE_BOTH} or args.list_devices:
-        try:
-            from defender.lib import media
-            if args.list_devices:
-                media.AudioStream.list_devices()
-                media.VideoStream.list_devices()
-                return
-            media_config = media.MediaConfig(config.get('media', None))
-            media_service = media.MediaService(media_config)
-        except ImportError as error:
-            print(f'Unable to import media module: {error}')
-            print('Please correct media dependencies or change mode to "server".')
+        if args.list_devices:
+            media.AudioStream.list_devices()
+            media.VideoStream.list_devices()
             return
+        media_config = media.MediaConfig(config.get('media', None))
+        media_service = media.MediaService(media_config)
     else:
         media_service = None
 
