@@ -3,7 +3,6 @@
 import abc
 import argparse
 import readline
-
 from typing import List
 from typing import Union
 
@@ -53,7 +52,7 @@ class BaseShell(object, metaclass=abc.ABCMeta):
         _prompt: A string that will be displayed whenever the user can run a command.
     """
 
-    def __init__(self, prompt: str = 'Shell> ') -> None:
+    def __init__(self, prompt: str = "Shell> ") -> None:
         """Set up a basic interactive shell."""
         self._original_completer = readline.get_completer()
         self._completer = self._setup_completer()
@@ -61,8 +60,8 @@ class BaseShell(object, metaclass=abc.ABCMeta):
         self._prompt = prompt
         self._show_banner()
         readline.set_completer(self._completer.complete)
-        readline.parse_and_bind('tab: complete')
-        readline.set_completer_delims('')
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer_delims("")
 
     def _execute_cmd(self, cmd: str) -> bool:
         """Services the root request for a command by calling child functions based on the root argument and command type.
@@ -85,17 +84,17 @@ class BaseShell(object, metaclass=abc.ABCMeta):
             return True
 
         result = True
-        method_suffix = args.branch.lower() if hasattr(args, 'branch') else 'root'
-        method_name = f'{args.root.lower()}_{method_suffix}'
+        method_suffix = args.branch.lower() if hasattr(args, "branch") else "root"
+        method_name = f"{args.root.lower()}_{method_suffix}"
         if hasattr(self, method_name):
             method = getattr(self, method_name)
             result = method(args)
         else:
-            if cmd.startswith('exit'):
+            if cmd.startswith("exit"):
                 if self._original_completer is not None:
                     readline.set_completer(self._original_completer)
                 result = False
-            elif cmd.startswith('help'):
+            elif cmd.startswith("help"):
                 if self._parser:
                     self._parser.print_help()
         return result
@@ -115,7 +114,7 @@ class BaseShell(object, metaclass=abc.ABCMeta):
             A Completer to help users auto-complete commands.
         """
         completer = ShellCompleter()
-        completer.extend(['exit', 'help'])
+        completer.extend(["exit", "help"])
         completer.extend(self._get_cmd_list())
         return completer
 
@@ -130,7 +129,7 @@ class BaseShell(object, metaclass=abc.ABCMeta):
 
     def _show_banner(self) -> None:
         """Displays a message when the shell is launched."""
-        print('Entering subconsole.')
+        print("Entering subconsole.")
 
     def prompt_user(self) -> bool:
         """Prompts for and services a user command by passing along if it is valid, or discarding if it is invalid.
@@ -148,7 +147,7 @@ class BaseShell(object, metaclass=abc.ABCMeta):
             except KeyboardInterrupt:
                 print()
                 continue
-            if cmd != '':
+            if cmd != "":
                 result = self._execute_cmd(cmd)
                 break
         return result

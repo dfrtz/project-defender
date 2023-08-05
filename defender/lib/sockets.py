@@ -3,7 +3,6 @@
 import errno
 import json
 import socket
-
 from typing import Union
 
 

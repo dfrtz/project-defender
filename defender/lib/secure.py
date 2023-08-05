@@ -3,19 +3,11 @@
 import base64
 import hashlib
 import os
-
 from typing import List
 from typing import Union
 
 from defender.lib import sql
 from defender.lib.http import ApiServer
-
-
-class AuthServer(ApiServer):
-    """API/HTTP server with basic user authentication from an encrypted database."""
-
-    def _init_authenticator(self):
-        return AuthDatabase(self.config.authenticator)
 
 
 class AuthDatabase(object):
@@ -29,10 +21,11 @@ class AuthDatabase(object):
         _auth_table: A table containing credential information.
         _auth_table_cache: A dictionary containing cached table requests.
     """
+
     key_length = 64
     salt_length = 64
     hash_iterations = 128 * 1000
-    hash_type = 'sha512'
+    hash_type = "sha512"
 
     def __init__(self, path: str) -> None:
         """Setup the database with all required encryption values."""
@@ -53,11 +46,7 @@ class AuthDatabase(object):
         salt = self.generate_salt()
         password = self.encrypt(password, salt)
 
-        user = {
-            AuthTable.column_user: username,
-            AuthTable.column_pass: password,
-            AuthTable.column_salt: salt
-        }
+        user = {AuthTable.column_user: username, AuthTable.column_pass: password, AuthTable.column_salt: salt}
 
         if self._auth_table.add(user) > 0:
             self.cache(user)
@@ -110,7 +99,7 @@ class AuthDatabase(object):
         Returns:
             The amount of entries modified, or -1 if there was an error.
         """
-        modified = self._auth_table.update(user, f'{AuthTable.column_user} = ?', (username,))
+        modified = self._auth_table.update(user, f"{AuthTable.column_user} = ?", (username,))
         if modified > 0:
             self.discard(username)
             self.cache(user)
@@ -127,7 +116,7 @@ class AuthDatabase(object):
             The encrypted message.
         """
         hmac = hashlib.pbkdf2_hmac(self._hash_type, msg.encode(), salt.encode(), self._hash_iter, self._dklen)
-        msg = base64.b64encode(hmac).decode('utf-8')
+        msg = base64.b64encode(hmac).decode("utf-8")
         return msg
 
     def generate_salt(self) -> str:
@@ -136,7 +125,7 @@ class AuthDatabase(object):
         Returns:
             A random salt.
         """
-        salt = base64.b64encode(os.urandom(self._salt_len)).decode('utf-8')
+        salt = base64.b64encode(os.urandom(self._salt_len)).decode("utf-8")
         return salt
 
     def get_user(self, username: str) -> Union[dict, None]:
@@ -148,7 +137,7 @@ class AuthDatabase(object):
         Returns:
             The first entry found matching the user name, or None.
         """
-        entries = self._auth_table.get(('*',),  f'{AuthTable.column_user} = ?', (username,))
+        entries = self._auth_table.get(("*",), f"{AuthTable.column_user} = ?", (username,))
         if entries:
             user = entries[0]
         else:
@@ -161,7 +150,7 @@ class AuthDatabase(object):
         Returns:
             All user entries.
         """
-        entries = self._auth_table.get(('*',))
+        entries = self._auth_table.get(("*",))
         return entries
 
     def remove_user(self, username: str) -> bool:
@@ -174,7 +163,7 @@ class AuthDatabase(object):
             True if user was removed, False otherwise.
         """
         removed = False
-        if self._auth_table.remove(f'{AuthTable.column_user} = ?', (username,)) > 0:
+        if self._auth_table.remove(f"{AuthTable.column_user} = ?", (username,)) > 0:
             self.discard(username)
             removed = True
         return removed
@@ -189,9 +178,7 @@ class AuthDatabaseHelper(sql.SQLiteHelper):
         Returns:
             A list of SQL "CREATE TABLE" commands which will be executed directly on the database.
         """
-        tables = [
-            AuthTable
-        ]
+        tables = [AuthTable]
         commands = [table.get_table_create_statement() for table in tables]
         return commands
 
@@ -202,7 +189,7 @@ class AuthDatabaseHelper(sql.SQLiteHelper):
         correct a poorly designed upgrade.
 
         Args:
-            old_version: The version that the database should be after maintenance.
+            new_version: The version that the database should be after maintenance.
         """
         if self.database.get_version() > new_version:
             # Method should be overridden by custom classes
@@ -218,13 +205,20 @@ class AuthDatabaseHelper(sql.SQLiteHelper):
             self.database_version = new_version
 
 
+class AuthServer(ApiServer):
+    """API/HTTP server with basic user authentication from an encrypted database."""
+
+    def _init_authenticator(self) -> AuthDatabase:
+        return AuthDatabase(self.config.authenticator)
+
+
 class AuthTable(sql.SQLiteTable):
     """SQLite table for simple storage of encrypted passwords and salts."""
 
-    table_name = 'users'
-    column_user = 'username'
-    column_pass = 'password'
-    column_salt = 'salt'
+    table_name = "users"
+    column_user = "username"
+    column_pass = "password"
+    column_salt = "salt"
 
     def _get_table_name(self) -> str:
         """Creates a string for the table to use with all SQL queries.
@@ -254,5 +248,5 @@ class AuthTable(sql.SQLiteTable):
         Returns:
             A SQL string that can be executed on a database to create the table.
         """
-        command = f'CREATE TABLE {AuthTable.table_name} ({AuthTable.column_user} TEXT PRIMARY KEY UNIQUE, {AuthTable.column_pass} TEXT, {AuthTable.column_salt} TEXT)'
+        command = f"CREATE TABLE {AuthTable.table_name} ({AuthTable.column_user} TEXT PRIMARY KEY UNIQUE, {AuthTable.column_pass} TEXT, {AuthTable.column_salt} TEXT)"
         return command

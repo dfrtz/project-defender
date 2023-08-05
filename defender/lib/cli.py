@@ -20,63 +20,64 @@ class HostShell(shells.BaseShell):
 
     def __init__(self) -> None:
         """Initializes the base shell with prefix and null daemons."""
-        super(HostShell, self).__init__('Defender> ')
+        super(HostShell, self).__init__("Defender> ")
         self.apid = None
         self.mediad = None
 
     def _get_cmd_list(self) -> list:
         """Creates a list of all commands that should autocomplete."""
         commands = [
-            *['http logging info', 'http logging debug'],
-            *['service http start', 'service http stop'],
-            *['user add', 'user remove', 'user edit', 'user list']
+            *["http logging info", "http logging debug"],
+            *["service http start", "service http stop"],
+            *["user add", "user remove", "user edit", "user list"],
         ]
         return commands
 
     def _setup_parser(self) -> argparse.ArgumentParser:
         """Setup all subcommand parsers accessible to the end user."""
-        parser = argparse.ArgumentParser(prog='', description='Defense Monitoring System')
+        parser = argparse.ArgumentParser(prog="", description="Defense Monitoring System")
 
         # First level parsers
-        parsers = parser.add_subparsers(title='Commands', dest='root')
+        parsers = parser.add_subparsers(title="Commands", dest="root")
         parsers.required = True
-        parser_help = parsers.add_parser('help', help='List commands and functions')
-        parser_http = parsers.add_parser('http', help='Modify HTTP subsystems')
-        parser_service = parsers.add_parser('service', help='Control services')
-        parser_user = parsers.add_parser('user', help='Modify user accounts')
-        parser_exit = parsers.add_parser('exit', help='Exit program')
+        parser_help = parsers.add_parser("help", help="List commands and functions")
+        parser_http = parsers.add_parser("http", help="Modify HTTP subsystems")
+        parser_service = parsers.add_parser("service", help="Control services")
+        parser_user = parsers.add_parser("user", help="Modify user accounts")
+        parser_exit = parsers.add_parser("exit", help="Exit program")
 
         # HTTP subparsers
-        subparsers_http = parser_http.add_subparsers(title='Subsystems', dest='branch')
+        subparsers_http = parser_http.add_subparsers(title="Subsystems", dest="branch")
         subparsers_http.required = True
-        subparser_http_debug = subparsers_http.add_parser('logging', help='HTTP/API logging configuration')
-        subparser_http_debug.add_argument('level', help='Logging level', action='store', choices=['info', 'debug'])
+        subparser_http_debug = subparsers_http.add_parser("logging", help="HTTP/API logging configuration")
+        subparser_http_debug.add_argument("level", help="Logging level", action="store", choices=["info", "debug"])
 
         # Service subparsers
-        subparsers_service = parser_service.add_subparsers(title='Services', dest='branch')
+        subparsers_service = parser_service.add_subparsers(title="Services", dest="branch")
         subparsers_service.required = True
-        subparser_service_video = subparsers_service.add_parser('audio', help='Audio service')
-        subparser_service_video.add_argument('action', help='Audio Action', action='store', choices=['start', 'stop'])
-        subparser_service_http = subparsers_service.add_parser('http', help='HTTP/API service')
-        subparser_service_http.add_argument('action', help='HTTP Action', action='store', choices=['start', 'stop'])
-        subparser_service_video = subparsers_service.add_parser('video', help='Video service')
-        subparser_service_video.add_argument('action', help='Video Action', action='store', choices=['start', 'stop'])
+        subparser_service_video = subparsers_service.add_parser("audio", help="Audio service")
+        subparser_service_video.add_argument("action", help="Audio Action", action="store", choices=["start", "stop"])
+        subparser_service_http = subparsers_service.add_parser("http", help="HTTP/API service")
+        subparser_service_http.add_argument("action", help="HTTP Action", action="store", choices=["start", "stop"])
+        subparser_service_video = subparsers_service.add_parser("video", help="Video service")
+        subparser_service_video.add_argument("action", help="Video Action", action="store", choices=["start", "stop"])
 
         # User subparsers
-        subparsers_user = parser_user.add_subparsers(title='Actions', dest='branch')
+        subparsers_user = parser_user.add_subparsers(title="Actions", dest="branch")
         subparsers_user.required = True
-        subparser_user_list = subparsers_user.add_parser('list', help='List users in database')
-        subparser_user_add = subparsers_user.add_parser('add', help='Add new user account')
-        subparser_user_add.add_argument('username', help='User name', action='store')
-        subparser_user_remove = subparsers_user.add_parser('remove', help='Remove existing user account')
-        subparser_user_remove.add_argument('username', help='User name', action='store')
-        subparser_user_edit = subparsers_user.add_parser('edit', help='Edit existing user account')
-        subparser_user_edit.add_argument('username', help='User name', action='store')
-        subparser_user_edit.add_argument('-p', '--password', help='Prompts for new user credentials.',
-                                         action='store_true')
+        subparser_user_list = subparsers_user.add_parser("list", help="List users in database")
+        subparser_user_add = subparsers_user.add_parser("add", help="Add new user account")
+        subparser_user_add.add_argument("username", help="User name", action="store")
+        subparser_user_remove = subparsers_user.add_parser("remove", help="Remove existing user account")
+        subparser_user_remove.add_argument("username", help="User name", action="store")
+        subparser_user_edit = subparsers_user.add_parser("edit", help="Edit existing user account")
+        subparser_user_edit.add_argument("username", help="User name", action="store")
+        subparser_user_edit.add_argument(
+            "-p", "--password", help="Prompts for new user credentials.", action="store_true"
+        )
 
         # Exit subparsers
-        parser_exit.add_argument('-f', '--force', help='Force shutdown', action='store_true', default=False)
+        parser_exit.add_argument("-f", "--force", help="Force shutdown", action="store_true", default=False)
         return parser
 
     def _show_banner(self) -> None:
@@ -96,18 +97,18 @@ class HostShell(shells.BaseShell):
         cmd_handled = True
         try:
             if not args.force:
-                response = input('Exit shell and shutdown all services? Y/n: ')
-                if response.lower() == 'y':
+                response = input("Exit shell and shutdown all services? Y/n: ")
+                if response.lower() == "y":
                     cmd_handled = False
             else:
                 cmd_handled = False
         except EOFError:
             # CTRL+D intercept.
-            print('')
+            print("")
             cmd_handled = False
         except KeyboardInterrupt:
             # CTRL+C intercept.
-            print('')
+            print("")
         return cmd_handled
 
     def http_logging(self, args: argparse.Namespace) -> bool:
@@ -123,13 +124,15 @@ class HostShell(shells.BaseShell):
         """
         cmd_handled = True
         level = args.level
-        if level == 'debug':
-            print('Warning: Enabling debugging will send additional output to console and logs, and restart the HTTP server.')
-            if input('Do you wish to continue? Y/n: ').lower() == 'y':
+        if level == "debug":
+            print(
+                "Warning: Enabling debugging will send additional output to console and logs, and restart the HTTP server."
+            )
+            if input("Do you wish to continue? Y/n: ").lower() == "y":
                 self.apid.set_debug(True)
-        elif level == 'info':
-            print('Warning: disabling debugging will restart the HTTP server.')
-            if input('Do you wish to continue? Y/n: ').lower() == 'y':
+        elif level == "info":
+            print("Warning: disabling debugging will restart the HTTP server.")
+            if input("Do you wish to continue? Y/n: ").lower() == "y":
                 self.apid.set_debug(False)
         return cmd_handled
 
@@ -146,9 +149,9 @@ class HostShell(shells.BaseShell):
         """
         cmd_handled = True
         action = args.action
-        if action == 'start':
+        if action == "start":
             self.mediad.start_audio()
-        elif action == 'stop':
+        elif action == "stop":
             self.mediad.stop_audio()
         return cmd_handled
 
@@ -165,11 +168,13 @@ class HostShell(shells.BaseShell):
         """
         cmd_handled = True
         action = args.action
-        if action == 'start':
+        if action == "start":
             self.apid.start()
-        elif action == 'stop':
-            print('Warning: Stopping the HTTP service will prevent external access to commands, user shell will be required to restart.')
-            if input('Do you wish to continue? Y/n: ').lower() == 'y':
+        elif action == "stop":
+            print(
+                "Warning: Stopping the HTTP service will prevent external access to commands, user shell will be required to restart."
+            )
+            if input("Do you wish to continue? Y/n: ").lower() == "y":
                 self.apid.shutdown()
         return cmd_handled
 
@@ -186,9 +191,9 @@ class HostShell(shells.BaseShell):
         """
         cmd_handled = True
         action = args.action
-        if action == 'start':
+        if action == "start":
             self.mediad.start_video()
-        elif action == 'stop':
+        elif action == "stop":
             self.mediad.stop_video()
         return cmd_handled
 
@@ -206,14 +211,14 @@ class HostShell(shells.BaseShell):
         cmd_handled = True
         user = args.username
         if self.apid.server.authenticator.get_user(user):
-            print(f'{user} already exists. To modify user, use: user edit {user}')
+            print(f"{user} already exists. To modify user, use: user edit {user}")
         else:
-            password1 = getpass.getpass(f'Enter password for {user}:')
+            password1 = getpass.getpass(f"Enter password for {user}:")
             # TODO add check against simple Passwords
-            password2 = getpass.getpass(f'Re-enter password for {user}:')
+            password2 = getpass.getpass(f"Re-enter password for {user}:")
 
             if password1 != password2:
-                print('Passwords do not match')
+                print("Passwords do not match")
             else:
                 self.apid.server.authenticator.add_user(user, password1)
         return cmd_handled
@@ -234,18 +239,19 @@ class HostShell(shells.BaseShell):
         # TODO Allow username change
         entry = self.apid.server.authenticator.get_user(user)
         if not entry:
-            print(f'User {user} does not exist')
+            print(f"User {user} does not exist")
         else:
-            password1 = getpass.getpass(f'Enter password for {user}:')
+            password1 = getpass.getpass(f"Enter password for {user}:")
             # TODO add check against simple Passwords
-            password2 = getpass.getpass(f'Re-enter password for {user}:')
+            password2 = getpass.getpass(f"Re-enter password for {user}:")
 
             if password1 != password2:
-                print('Passwords do not match')
+                print("Passwords do not match")
             else:
                 entry[AuthTable.column_salt] = self.apid.server.authenticator.generate_salt()
                 entry[AuthTable.column_pass] = self.apid.server.authenticator.encrypt(
-                    password1, entry[AuthTable.column_salt])
+                    password1, entry[AuthTable.column_salt]
+                )
                 self.apid.server.authenticator.edit_user(user, entry)
         return cmd_handled
 
@@ -263,8 +269,8 @@ class HostShell(shells.BaseShell):
         cmd_handled = True
         entries = self.apid.server.authenticator.get_users()
         if entries:
-            users = '\n'.join([user['username'] for user in entries])
-            print(f'User list:\n{users}')
+            users = "\n".join([user["username"] for user in entries])
+            print(f"User list:\n{users}")
         return cmd_handled
 
     def user_remove(self, args: argparse.Namespace) -> bool:
@@ -282,14 +288,14 @@ class HostShell(shells.BaseShell):
         user = args.username
         entry = self.apid.server.authenticator.get_user(user)
         if not entry:
-            print(f'User {user} does not exist')
+            print(f"User {user} does not exist")
         else:
-            print(f'Do you wish to revoke user {user}\'s access?')
-            if input('Re-enter user\'s name to continue: ') == user:
+            print(f"Do you wish to revoke user {user}'s access?")
+            if input("Re-enter user's name to continue: ") == user:
                 if self.apid.server.authenticator.remove_user(user):
-                    print(f'User {user} access revoked.')
+                    print(f"User {user} access revoked.")
                 else:
-                    print(f'Could not revoke user {user} access. Please try again.')
+                    print(f"Could not revoke user {user} access. Please try again.")
             else:
-                print('User confirmation did not match. Please try again.')
+                print("User confirmation did not match. Please try again.")
         return cmd_handled
