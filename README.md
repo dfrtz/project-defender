@@ -6,11 +6,11 @@ video from security cameras, and other devices, in a local network.
 Security is currently achieved through a combination of HTTPS certificates, and a salted
 User/Password database with PBKDF2 SHA512 combo.
 
-For simplicity and greater compatibility with low end devices, video is streamed as MJPEG, and audio
+For simplicity and greater compatibility with low-end devices, video is streamed as MJPEG, and audio
 is streamed as WAV (meaning bandwidth usage is not optimized). Streams can be saved using separate
 applications with support for HTTP, such as FFMPEG, VLC, etc.
 
-Currently this application supports Video streaming through OpenCV:  
+This application supports Video streaming through OpenCV:  
 http://opencv.org/
 
 And audio through PyAudio:  
@@ -32,7 +32,7 @@ https://pypi.python.org/pypi/PyAudio
 ### Quick Start
 
 1. Setup OpenCV and Python environment with:  
-[How to setup Raspberry Pi](SETUP.md)
+[How to set up Raspberry Pi](SETUP.md)
 
 2. Copy frontend demo data to local folder:
     ```
@@ -80,9 +80,9 @@ https://pypi.python.org/pypi/PyAudio
 #### Known Limitations
 
 * For some reason HTTP traffic appears to fail loading page/serving API calls, until reason is
-determined HTTPS should always be used. Well, HTTPS should always be used anyways.
+determined HTTPS should always be used. Well, HTTPS should always be used.
 * Multiple concurrent connections to audio streams may overflow buffer and degrade playback.
-* Password hashing can leading to slowdown with the initial load of the provided HTML frontend
+* Password hashing can lead to slowdown with the initial load of the provided HTML frontend
 unless the JS scripts are minified into one.
 
 
@@ -94,5 +94,5 @@ unless the JS scripts are minified into one.
 * Support for controlling remote motorized devices, such as turret cameras, drones, etc.
 * Builtin A/V recording through application, instead of with 3rd party applications (FFMPEG/VLC).
 * Possibly additional compression formats for A/V streams.
-* Migrate HTTP interfaces to Flask.
+* Migrate HTTP interfaces to Flask/FastAPI.
 * Implement API sessions to increase authorization speed on lower end devices.
