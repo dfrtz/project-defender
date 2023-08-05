@@ -1,74 +1,82 @@
-#!/usr/bin/env python
+"""Setup configuration and dependencies for the textology library."""
 
-import glob
 import os
-import setuptools
+from pathlib import Path
 
-MODULE_DIR = os.path.dirname(__file__)
-REQUIREMENTS_FILE = os.path.join(MODULE_DIR, 'requirements.txt')
+from setuptools import find_packages
+from setuptools import setup
 
-
-def _find_files(directory: str) -> list:
-    """Locate non-python package files in compatible format with setuptools."""
-    paths = []
-    for (path, _, filenames) in os.walk(directory):
-        for filename in filenames:
-            paths.append(os.path.join(MODULE_DIR, path, filename))
-    return paths
+ROOT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def _find_requirements(file: str) -> list:
-    """Import requirements from an external file in compatible format with setuptools."""
-    with open(file, 'rt') as requirements_file:
-        requirements = [requirement.strip() for requirement in requirements_file.readlines()]
-    return requirements
+def _find_version(module_path: str, file: str = "__init__.py") -> str:
+    """Locate semantic version from a text file in a compatible format with setuptools."""
+    # Do not import the module within the library, as this can cause an infinite import. Read manually.
+    init_file = os.path.join(ROOT_DIR, module_path, file)
+    with open(init_file, "rt", encoding="utf-8") as file_in:
+        for line in file_in.readlines():
+            if "__version__" in line:
+                # Example:
+                # __version__ = "1.2.3" -> 1.2.3
+                version = line.split()[2].replace('"', "")
+    return version
 
 
-def _find_scripts(directory: str) -> list:
-    """Locate scripts and provide endpoint names compatible with setuptools."""
-    scripts = []
-    for abs_path in glob.glob(os.path.join(MODULE_DIR, f'{directory}/*.py')):
-        filename = os.path.basename(abs_path).rstrip('.py')
-        if not filename.startswith('__'):
-            scripts.append('{} = defender.scripts.{}:main'.format(filename, filename))
-    return scripts
+def read_requirements_file(extra_type: str | None) -> list[str]:
+    """Read local requirement file basic on the type."""
+    extra_type = f"-{extra_type}" if extra_type else ""
+    with open(f"requirements{extra_type}.txt", encoding="utf-8") as input_file:
+        lines = (line.strip() for line in input_file)
+        return [req for req in lines if req and not req.startswith("#")]
 
 
-PACKAGE_DATA = {
-    '': [
-        *_find_files('defender/demodata'),
-        *_find_files('defender/html')
-    ]
-}
-PACKAGES = setuptools.find_packages(MODULE_DIR, include=['defender*'], exclude=['*test', '*benchmarks'])
-
-
-setuptools.setup(
-    name='defender',
-    version='0.1.0',
-    url='https://github.com/dfrtz/project-defender',
-    license='Apache Software License',
-    author='David Fritz',
-    tests_require=['pytest'],
-    install_requires=_find_requirements(REQUIREMENTS_FILE),
-    description='Security and Defense Device Manager with REST API',
-    packages=['defender'],
-    platforms='Linux',
-    python_requires='>=3.6',
-    entry_points={
-        'console_scripts': _find_scripts('defender/scripts')
+setup(
+    name="defender",
+    description="Security and Defense Device Manager with REST API",
+    long_description=Path("README.md").read_text(encoding="utf-8"),
+    long_description_content_type="text/markdown",
+    version=_find_version("defender"),
+    author="David Fritz",
+    url="https://github.com/dfrtz/project-defender",
+    project_urls={
+        "Issue Tracker": "https://github.com/dfrtz/project-defender/issues",
+        "Source Code": "https://github.com/dfrtz/project-defender",
     },
+    license="Apache Software License",
     classifiers=[
-        'Programming Language :: Python',
-        'Development Status :: 4 - Beta',
-        'Natural Language :: English',
-        'Environment :: Console',
-        'Environment :: Web Environment',
-        'Intended Audience :: System Administrators',
-        'License :: OSI Approved :: Apache Software License',
-        'Operating System :: POSIX',
-        'Topic :: Office/Business',
-        'Topic :: Software Development :: Libraries :: Application Frameworks',
+        "Development Status :: 4 - Beta",
+        "Environment :: Console",
+        "Environment :: Web",
+        "Intended Audience :: Developers",
+        "Intended Audience :: Science/Research",
+        "License :: OSI Approved :: Apache Software License",
+        "Programming Language :: Python",
+        "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3 :: Only",
+        "Programming Language :: Python :: 3.6",
+        "Programming Language :: Python :: 3.7",
+        "Topic :: Software Development",
+        "Topic :: Scientific/Engineering",
+        "Typing :: Typed",
+        "Operating System :: POSIX :: Linux",
     ],
+    platforms=[
+        "Linux",
+    ],
+    test_suite="pytest",
+    packages=find_packages(ROOT_DIR, include=["defender*"], exclude=["*test", "tests*"]),
+    include_package_data=True,
+    python_requires=">=3.6",
+    install_requires=read_requirements_file(None),
+    extras_require={
+        "dev": [
+            *read_requirements_file(None),
+            *read_requirements_file("dev"),
+        ],
+    },
+    entry_points={
+        "console_scripts": [
+            "defend = defender.scripts.defend:main",
+        ]
+    },
 )
-
