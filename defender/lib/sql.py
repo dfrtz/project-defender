@@ -3,7 +3,6 @@
 import abc
 import pathlib
 import sqlite3
-
 from typing import Iterable
 from typing import List
 from typing import Tuple
@@ -15,10 +14,11 @@ class SQLiteDatabase(object):
     Attributes:
         path: Path to database file. May be ":memory:" to create database in RAM.
     """
+
     NO_ENTRY = -1
 
     def __init__(self, path: str) -> None:
-        """Setup the DB to allow connections to be made."""
+        """Set up the DB to allow connections to be made."""
         self._connection = None
         self.path = path
 
@@ -38,7 +38,7 @@ class SQLiteDatabase(object):
         """Creates database on the local filesystem."""
         sqlite3.connect(self.path).close()
 
-    def execute(self, statement: str, values: Iterable = ()):
+    def execute(self, statement: str, values: Iterable = ()) -> bool:
         """Executes a SQL statement on the database.
 
         No form of validation or injection prevention is performed with this method. This method should only be used by
@@ -67,7 +67,7 @@ class SQLiteDatabase(object):
         if not self.is_open():
             return SQLiteDatabase.NO_ENTRY
         cursor = self._connection.cursor()
-        cursor.execute('PRAGMA user_version')
+        cursor.execute("PRAGMA user_version")
         row = cursor.fetchone()
         version = row[0]
         cursor.close()
@@ -89,7 +89,7 @@ class SQLiteDatabase(object):
         columns = self.qmark_values(value_groups, True, False)
         rows = self.qmarks(len(value_groups))
         row_data = self.qmark_values(value_groups, False, True)
-        statement = f'INSERT OR IGNORE INTO {table_name} {columns} VALUES {rows}'
+        statement = f"INSERT OR IGNORE INTO {table_name} {columns} VALUES {rows}"
 
         cursor = self._connection.cursor()
         cursor.execute(statement, row_data)
@@ -118,8 +118,8 @@ class SQLiteDatabase(object):
             True if no connection is open and new connection is successful, False if the connection is already open.
         """
         if not self.is_open():
-            path = f'file:{self.path}' if self.path != ':memory:' else ':memory:'
-            self._connection = sqlite3.connect(f'{path}?{flags}', uri=True)
+            path = f"file:{self.path}" if self.path != ":memory:" else ":memory:"
+            self._connection = sqlite3.connect(f"{path}?{flags}", uri=True)
             return True
         return False
 
@@ -133,7 +133,7 @@ class SQLiteDatabase(object):
         Returns:
             A string in SQL query format with the original column names saved and values replaced with '?'s.
         """
-        return ','.join(str(f'{key} = ?') for key, _ in value_groups)
+        return ",".join(str(f"{key} = ?") for key, _ in value_groups)
 
     @staticmethod
     def qmark_values(value_groups: Iterable[tuple], columns: bool = True, rows: bool = True) -> Tuple[str]:
@@ -167,8 +167,8 @@ class SQLiteDatabase(object):
         Returns:
             A string in SQL query format with requested amount of '?'s.
         """
-        qmarks = ','.join(['?' for _ in range(0, count)])
-        return f'({qmarks})'
+        qmarks = ",".join(["?" for _ in range(0, count)])
+        return f"({qmarks})"
 
     def remove(self, table_name: str, where_clause: str, where_args: Iterable) -> int:
         """Performs a SQL DELETE statement on a table.
@@ -183,7 +183,7 @@ class SQLiteDatabase(object):
         """
         if not self.is_open() or not where_clause or not where_args:
             return SQLiteDatabase.NO_ENTRY
-        statement = f'DELETE FROM {table_name} WHERE {where_clause}'
+        statement = f"DELETE FROM {table_name} WHERE {where_clause}"
 
         cursor = self._connection.cursor()
         cursor.execute(statement, where_args)
@@ -192,8 +192,9 @@ class SQLiteDatabase(object):
         cursor.close()
         return count
 
-    def select(self, table_name: str, columns: Iterable[str], selection: str, selection_args: Iterable,
-               order_by: str = None) -> List[dict]:
+    def select(
+        self, table_name: str, columns: Iterable[str], selection: str, selection_args: Iterable, order_by: str = None
+    ) -> List[dict]:
         """Performs a SQL SELECT statement on a table.
 
         Args:
@@ -209,22 +210,22 @@ class SQLiteDatabase(object):
         if not self.is_open():
             return []
 
-        columns_data = ','.join(str(column) for column in columns)
-        statement = f'SELECT {columns_data} FROM {table_name}'
+        columns_data = ",".join(str(column) for column in columns)
+        statement = f"SELECT {columns_data} FROM {table_name}"
         if selection:
-            statement = f'{statement} WHERE {selection}'
+            statement = f"{statement} WHERE {selection}"
         else:
             selection_args = []
 
         if order_by:
-            statement += f'{statement} ORDER BY {order_by}'
+            statement += f"{statement} ORDER BY {order_by}"
 
         cursor = self._connection.cursor()
         rows = cursor.execute(statement, selection_args).fetchall()
         cursor.close()
 
         # Expand wildcard into table columns
-        if columns == ('*',):
+        if columns == ("*",):
             columns = tuple(title[0] for title in cursor.description)
         return [{column: result for column, result in zip(columns, row)} for row in rows]
 
@@ -240,7 +241,7 @@ class SQLiteDatabase(object):
         if not self.is_open():
             return False
         cursor = self._connection.cursor()
-        cursor.execute(f'PRAGMA user_version = {int(version)}')
+        cursor.execute(f"PRAGMA user_version = {int(version)}")
         self._connection.commit()
         cursor.close()
         matches = self.get_version() == version
@@ -263,7 +264,7 @@ class SQLiteDatabase(object):
         value_groups = entry.items()
         columns = self.prepare_columns(value_groups)
         row_data = self.qmark_values(value_groups, False, True) + where_args
-        statement = f'UPDATE {table_name} SET {columns} WHERE {where_clause}'
+        statement = f"UPDATE {table_name} SET {columns} WHERE {where_clause}"
 
         cursor = self._connection.cursor()
         cursor.execute(statement, row_data)
@@ -289,7 +290,7 @@ class SQLiteHelper(object, metaclass=abc.ABCMeta):
         self.database_version = database_version
 
         self._init_db(database_version)
-        self.open('mode=rw')
+        self.open("mode=rw")
         self.upgrade_db(database_version)
         self.downgrade_db(database_version)
         self.close()
@@ -308,12 +309,12 @@ class SQLiteHelper(object, metaclass=abc.ABCMeta):
         Args:
             version: Initial version number of the database when newly created.
         """
-        path = pathlib.Path(self.path).expanduser().absolute() if self.path != ':memory:' else ':memory:'
+        path = pathlib.Path(self.path).expanduser().absolute() if self.path != ":memory:" else ":memory:"
         self.database = SQLiteDatabase(str(path))
 
         # DB must be instantiated after checking path to prevent accidental creation
-        if path == ':memory:' or not path.is_file():
-            if path != ':memory:':
+        if path == ":memory:" or not path.is_file():
+            if path != ":memory:":
                 parent = path.parent
                 if not parent.is_dir():
                     parent.mkdir(parents=True, exist_ok=True)
@@ -352,7 +353,7 @@ class SQLiteHelper(object, metaclass=abc.ABCMeta):
         Returns:
             The SQLiteDatabase for this helper.
         """
-        self.open('mode=ro')
+        self.open("mode=ro")
         return self.database
 
     def get_writable_db(self) -> SQLiteDatabase:
@@ -361,10 +362,10 @@ class SQLiteHelper(object, metaclass=abc.ABCMeta):
         Returns:
             The SQLiteDatabase for this helper.
         """
-        self.open('mode=rw')
+        self.open("mode=rw")
         return self.database
 
-    def open(self, flags: str = 'mode=rw') -> None:
+    def open(self, flags: str = "mode=rw") -> None:
         """Opens the shared database.
 
         Args:
@@ -421,19 +422,20 @@ class SQLiteTable(object, metaclass=abc.ABCMeta):
     def add(self, entry: dict) -> int:
         """Performs a SQL INSERT statement.
 
-         Args:
-             entry: Data to store in the database with keys as columns and values as row data.
+        Args:
+            entry: Data to store in the database with keys as columns and values as row data.
 
-         Returns:
-             The total amount of rows inserted into database or -1 if an error occurred.
-         """
+        Returns:
+            The total amount of rows inserted into database or -1 if an error occurred.
+        """
         database = self.get_writable_db()
         count = database.insert(self._name, entry)
         database.close()
         return count
 
-    def get(self, columns: Iterable[str], selection: str = None, selection_args: Iterable = None,
-            order_by: str = None) -> List[dict]:
+    def get(
+        self, columns: Iterable[str], selection: str = None, selection_args: Iterable = None, order_by: str = None
+    ) -> List[dict]:
         """Performs a SQL SELECT statement.
 
         Args:
