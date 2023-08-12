@@ -8,6 +8,3 @@ exclude_dirs:
 
 targets:
   - defender
-
-skips:
-  - B101
